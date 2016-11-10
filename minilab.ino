@@ -7,7 +7,7 @@ u8 serial_buffer[100], serial_buffer_length = 0;
 
 void setup() {
   // put your setup code here, to run once:
-  Serial.begin(9600);
+  Serial.begin(115200);
   pinMode(LED_BUILTIN, OUTPUT);
 }
 
@@ -52,10 +52,11 @@ void service_request ( Byte *buffer, u8 length )
   switch ( command ) 
   {
     default: error_code = 0xFF; break; // command unknown
-    case 1: error_code = service_digital_input  ( buffer, length, out_buffer + 1, &out_length ); break;
-    case 2: error_code = service_digital_output ( buffer, length, out_buffer + 1, &out_length ); break;
-    case 3: error_code = service_analog_input   ( buffer, length, out_buffer + 1, &out_length ); break;
-    case 4: error_code = service_analog_output  ( buffer, length, out_buffer + 1, &out_length ); break;
+    case 1: error_code = service_echo           ( buffer, length, out_buffer + 1, &out_length ); break;
+    case 2: error_code = service_digital_input  ( buffer, length, out_buffer + 1, &out_length ); break;
+    case 3: error_code = service_digital_output ( buffer, length, out_buffer + 1, &out_length ); break;
+    case 4: error_code = service_analog_input   ( buffer, length, out_buffer + 1, &out_length ); break;
+    case 5: error_code = service_analog_output  ( buffer, length, out_buffer + 1, &out_length ); break;
   }
   
   if ( error_code )
@@ -79,6 +80,12 @@ bool check_analog_pin_number(u8 pin_id)
   return pin_id < 14;
 }
 
+
+/* format: <ECHO><what-ever> */
+u8 service_echo (Char* buffer, u8 length, Char *out_buffer, u8 *out_length )
+{
+  *out_length = 0;
+}
 
 /* format: <DI><pin-number>
   error codes = {
