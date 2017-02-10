@@ -51,12 +51,13 @@ void service_request ( Byte *buffer, u8 length )
   // service command
   switch ( command ) 
   {
-    default: error_code = 0xFF; break; // command unknown
-    case 1: error_code = service_echo           ( buffer, length, out_buffer + 1, &out_length ); break;
-    case 2: error_code = service_digital_input  ( buffer, length, out_buffer + 1, &out_length ); break;
-    case 3: error_code = service_digital_output ( buffer, length, out_buffer + 1, &out_length ); break;
-    case 4: error_code = service_analog_input   ( buffer, length, out_buffer + 1, &out_length ); break;
-    case 5: error_code = service_analog_output  ( buffer, length, out_buffer + 1, &out_length ); break;
+    default : error_code = 0xFF; break; // command unknown
+    case 1  : error_code = service_echo                 ( buffer, length, out_buffer + 1, &out_length ); break;
+    case 2  : error_code = service_read_digital_input   ( buffer, length, out_buffer + 1, &out_length ); break;
+    case 3  : error_code = service_write_digital_output ( buffer, length, out_buffer + 1, &out_length ); break;
+    case 4  : error_code = service_read_analog_input    ( buffer, length, out_buffer + 1, &out_length ); break;
+    case 5  : error_code = service_write_analog_output  ( buffer, length, out_buffer + 1, &out_length ); break;
+    // case 6: error_code = service_setup          ( buffer, length, out_buffer + 1, &out_length ); break;
   }
   
   if ( error_code )
@@ -87,13 +88,14 @@ u8 service_echo (Char* buffer, u8 length, Char *out_buffer, u8 *out_length )
   *out_length = 0;
 }
 
-/* format: <DI><pin-number>
-  error codes = {
+/* format   : <DI><pin-number>
+   response : <DI><pin-number><state>
+  error_codes = {
     1 => "invalid command length"
     2 => "invalid pin number"
   }
 */
-u8 service_digital_input (Char* buffer, u8 length, Char *out_buffer, u8 *out_length)
+u8 service_read_digital_input (Char* buffer, u8 length, Char *out_buffer, u8 *out_length)
 {
   u8 pin_number = buffer[0];
 
@@ -103,22 +105,24 @@ u8 service_digital_input (Char* buffer, u8 length, Char *out_buffer, u8 *out_len
   if ( check_digital_pin_number ( pin_number ) ) 
   {
     pinMode ( pin_number, INPUT );
-    out_buffer[0] = digitalRead( pin_number );
-    *out_length = 1;
+    out_buffer[0] = pin_number;
+    out_buffer[1] = digitalRead( pin_number );
+    *out_length = 2;
     return 0;
   }
 
   return 2; // invalid pin number
 }
 
-/* format: <DO><pin-number><state>
+/* format   : <DO><pin-number><state>
+   response : <DO><pin-number><state>
   error codes = {
     1 => "invalid command length"
     2 => "invalid pin number"
     3 => "invalid state"
   }
 */
-u8 service_digital_output (Char* buffer, u8 length, Char *out_buffer, u8 *out_length)
+u8 service_write_digital_output (Char* buffer, u8 length, Char *out_buffer, u8 *out_length)
 {
   u8 pin_number = buffer[0];
   u8 state = buffer[1];
@@ -142,7 +146,8 @@ u8 service_digital_output (Char* buffer, u8 length, Char *out_buffer, u8 *out_le
   return 2;           // invalid pin number
 }
 
-/* format: <AI><pin-number><ref>
+/* format   : <AI><pin-number><ref>
+   response : <AI><pin-number><ref><state>
     ref = {
       0 => default (5v/3.3v), 
       1 => internal 1.1v
@@ -155,7 +160,7 @@ u8 service_digital_output (Char* buffer, u8 length, Char *out_buffer, u8 *out_le
       3 => "invalid reference"
     }
 */
-u8 service_analog_input (Char *buffer, u8 length, Char *out_buffer, u8 *out_length)
+u8 service_read_analog_input (Char *buffer, u8 length, Char *out_buffer, u8 *out_length)
 {
   u8 pin_number = buffer[0];
   u8 ref = buffer[1];
@@ -185,18 +190,19 @@ u8 service_analog_input (Char *buffer, u8 length, Char *out_buffer, u8 *out_leng
   return 2;           // invalid pin number
 }
 
-/* format: <AO><pin-number><8 bit value>
+/* format   : <AO><pin-number><8 bit value>
+   response : <AO><pin-number><8 bit value>
     error codes = {
       1 => "invalid command length"
       2 => "invalid pin number"
     }
 */
-u8 service_analog_output (Char* buffer, u8 length, Char *out_buffer, u8 *out_length)
+u8 service_write_analog_output (Char* buffer, u8 length, Char *out_buffer, u8 *out_length)
 {
   u8 pin_number = buffer[0];
   u8 value = buffer[1];
 
-  if ( length != 3 )
+  if ( length != 2 )
     return 1;           // invalid command length
 
   if ( check_analog_pin_number ( pin_number ) ) 
@@ -205,8 +211,7 @@ u8 service_analog_output (Char* buffer, u8 length, Char *out_buffer, u8 *out_len
     analogWrite ( pin_number, value );
     out_buffer[0] = pin_number;
     out_buffer[1] = value;
-    out_buffer[2] = buffer[2];
-    *out_length = 3;
+    *out_length = 2;
     return 0;
   }
   
