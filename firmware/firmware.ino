@@ -2,18 +2,28 @@
 #include "types.h"
 #include "proto.h"
 
-u8 serial_buffer[100], serial_buffer_length = 0;
+u8 serial_buffer[270];
+u16 serial_buffer_length = 0;
+
+#define MAX_BAUDRATE_INDEX    11
+const u32 supported_baudrates[]   = { 300, 600, 1200, 2400, 4800, 9600, 14400, 19200, 28800, 38400, 57600, 115200 };
+
+HardwareSerial *com_ports[4] = { 0, 0, 0, 0 };
 
 
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
   pinMode(LED_BUILTIN, OUTPUT);
+
+  com_ports[0] = &Serial;
+  com_ports[1] = &Serial1;
+  com_ports[2] = &Serial2;
+  com_ports[3] = &Serial3;
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-  u8 i;
   i8 status;
   static bool led_status = true;
 
@@ -39,10 +49,11 @@ void loop() {
     1 => unknown command
     2 => 
 */
-void service_request ( Byte *buffer, u8 length )
+void service_request ( Byte *buffer, u16 length )
 {
-  Char out_buffer[100];
-  u8 error_code = 0, out_length = 0, command;
+  Char out_buffer[270];
+  u8 error_code = 0, command;
+  u16 out_length = 0;
 
   // shift out command
   command = *buffer++;
@@ -57,7 +68,16 @@ void service_request ( Byte *buffer, u8 length )
     case 3  : error_code = service_write_digital_output ( buffer, length, out_buffer + 1, &out_length ); break;
     case 4  : error_code = service_read_analog_input    ( buffer, length, out_buffer + 1, &out_length ); break;
     case 5  : error_code = service_write_analog_output  ( buffer, length, out_buffer + 1, &out_length ); break;
-    // case 6: error_code = service_setup          ( buffer, length, out_buffer + 1, &out_length ); break;
+
+    // serial gateway
+    case 6  : error_code = service_sg_open        ( buffer, length, out_buffer + 1, &out_length ); break;
+    case 7  : error_code = service_sg_close       ( buffer, length, out_buffer + 1, &out_length ); break;
+    case 8  : error_code = service_sg_flush       ( buffer, length, out_buffer + 1, &out_length ); break;
+    case 9  : error_code = service_sg_write       ( buffer, length, out_buffer + 1, &out_length ); break;
+    case 10 : error_code = service_sg_read        ( buffer, length, out_buffer + 1, &out_length ); break;
+    case 11 : error_code = service_sg_set_timeout ( buffer, length, out_buffer + 1, &out_length ); break;
+
+    // case 12: error_code = service_reset  ( buffer, length, out_buffer + 1, &out_length ); break;
   }
   
   if ( error_code )
@@ -81,9 +101,14 @@ bool check_analog_pin_number(u8 pin_id)
   return pin_id < 14;
 }
 
+bool check_sg_uart_number(u8 uart_id)
+{
+  return uart_id < 4 && uart_id > 0;
+}
+
 
 /* format: <ECHO><what-ever> */
-u8 service_echo (Char* buffer, u8 length, Char *out_buffer, u8 *out_length )
+u8 service_echo (Char* buffer, u16 length, Char *out_buffer, u16 *out_length )
 {
   *out_length = 0;
 }
@@ -95,7 +120,7 @@ u8 service_echo (Char* buffer, u8 length, Char *out_buffer, u8 *out_length )
     2 => "invalid pin number"
   }
 */
-u8 service_read_digital_input (Char* buffer, u8 length, Char *out_buffer, u8 *out_length)
+u8 service_read_digital_input (Char* buffer, u16 length, Char *out_buffer, u16 *out_length)
 {
   u8 pin_number = buffer[0];
 
@@ -122,7 +147,7 @@ u8 service_read_digital_input (Char* buffer, u8 length, Char *out_buffer, u8 *ou
     3 => "invalid state"
   }
 */
-u8 service_write_digital_output (Char* buffer, u8 length, Char *out_buffer, u8 *out_length)
+u8 service_write_digital_output (Char* buffer, u16 length, Char *out_buffer, u16 *out_length)
 {
   u8 pin_number = buffer[0];
   u8 state = buffer[1];
@@ -160,7 +185,7 @@ u8 service_write_digital_output (Char* buffer, u8 length, Char *out_buffer, u8 *
       3 => "invalid reference"
     }
 */
-u8 service_read_analog_input (Char *buffer, u8 length, Char *out_buffer, u8 *out_length)
+u8 service_read_analog_input (Char *buffer, u16 length, Char *out_buffer, u16 *out_length)
 {
   u8 pin_number = buffer[0];
   u8 ref = buffer[1];
@@ -197,7 +222,7 @@ u8 service_read_analog_input (Char *buffer, u8 length, Char *out_buffer, u8 *out
       2 => "invalid pin number"
     }
 */
-u8 service_write_analog_output (Char* buffer, u8 length, Char *out_buffer, u8 *out_length)
+u8 service_write_analog_output (Char* buffer, u16 length, Char *out_buffer, u16 *out_length)
 {
   u8 pin_number = buffer[0];
   u8 value = buffer[1];
@@ -216,6 +241,239 @@ u8 service_write_analog_output (Char* buffer, u8 length, Char *out_buffer, u8 *o
   }
   
   return 2;           // invalid pin number
+}
+
+/* format   : <sgO><uart-number><baudrate><timeout_l><timeout_h>
+   response : <sgO><uart-number><baudrate><timeout_l><timeout_h>
+    error codes = {
+      1 => "invalid command length"
+      2 => "invalid uart number"
+      3 => "invalid baudrate"
+    }
+*/
+u8 service_sg_open (Char* buffer, u16 length, Char *out_buffer, u16 *out_length)
+{
+  u8 uart_number = buffer[0];
+  u8 baudrate_id = buffer[1];
+  u16 timeout = 0;
+  u32 baud    = 0;
+
+  if ( length != 4 )
+    return 1;           // invalid command length
+
+  if ( !check_sg_uart_number ( uart_number ) )
+    return 2;           // invalid uart number
+
+  if ( baudrate_id > MAX_BAUDRATE_INDEX )
+    return 3;           // invalid baudrate_id
+
+  timeout = buffer[2] | ( ((u16)buffer[3]) << 8 );
+  baud    = supported_baudrates[baudrate_id];
+
+  HardwareSerial *port = get_com_port_ref(uart_number);
+  port->begin(baud);
+  port->setTimeout(timeout);
+
+  out_buffer[0] = uart_number;
+  out_buffer[1] = baudrate_id;
+  out_buffer[2] = buffer[2];
+  out_buffer[3] = buffer[3];
+  *out_length = 4;
+  return 0;
+}
+
+/* format   : <sgC><uart-number>
+   response : <sgC><uart-number>
+    error codes = {
+      1 => "invalid command length"
+      2 => "invalid uart number"
+    }
+*/
+u8 service_sg_close (Char* buffer, u16 length, Char *out_buffer, u16 *out_length)
+{
+  u8 uart_number = buffer[0];
+
+  if ( length != 1 )
+    return 1;           // invalid command length
+
+  if ( !check_sg_uart_number ( uart_number ) )
+    return 2;           // invalid uart number
+
+  HardwareSerial *port = get_com_port_ref(uart_number);
+  port->end();
+  
+  out_buffer[0] = uart_number;
+  *out_length = 1;
+  return 0;
+}
+
+/* format   : <sgF><uart-number>
+   response : <sgF><uart-number>
+    error codes = {
+      1 => "invalid command length"
+      2 => "invalid uart number"
+    }
+*/
+u8 service_sg_flush (Char* buffer, u16 length, Char *out_buffer, u16 *out_length)
+{
+  u8 uart_number = buffer[0];
+
+  if ( length != 1 )
+    return 1;           // invalid command length
+
+  if ( !check_sg_uart_number ( uart_number ) )
+    return 2;           // invalid uart number
+
+  HardwareSerial *port = get_com_port_ref(uart_number);
+  while( port->available() ) 
+  { 
+    port->read(); 
+  }
+  
+  out_buffer[0] = uart_number;
+  *out_length = 1;
+  return 0;
+}
+
+/* format   : <sgW><uart-number><packet-length><[packet]>
+   response : <sgW><uart-number><bytes-written>
+    error codes = {
+      1 => "invalid command length"
+      2 => "invalid uart number"
+    }
+*/
+u8 service_sg_write (Char* buffer, u16 length, Char *out_buffer, u16 *out_length)
+{
+  u8 uart_number   = buffer[0];
+  u8 packet_length = buffer[1];
+  u8 bytes_written = 0;
+
+  if ( length != packet_length + 2 )
+    return 1;
+
+  if ( !check_sg_uart_number ( uart_number ) )
+    return 2;           // invalid uart number
+
+
+  if ( packet_length )
+  {
+    HardwareSerial *port = get_com_port_ref(uart_number);
+    bytes_written = port->write( buffer + 2, packet_length );
+  }
+
+  out_buffer[0] = uart_number;
+  out_buffer[1] = bytes_written;
+  *out_length = 2;
+  return 0;
+}
+
+/* format   : <sgR><eof-marker|uart-number>
+              if ( eof-marker )
+              {
+                <eof-marker><max-read-length>
+              }
+              else
+              {
+                <max-read-length>
+              }
+   response : <sgR><eof-marker|uart-number>
+              if ( eof-marker )
+              {
+                <eof-marker><bytes-read-count><[read-bytes]>
+              }
+              else
+              {
+                <bytes-read-count><[read-bytes]>
+              }
+    error codes = {
+      1 => "invalid command length"
+      2 => "invalid uart number"
+    }
+*/
+u8 service_sg_read (Char* buffer, u16 length, Char *out_buffer, u16 *out_length)
+{
+  u8 uart_number = buffer[0];
+  bool mode_eof  = (uart_number & 0x10) != 0; 
+
+  if ( length < 1 )
+    return 1;           // invalid command length
+
+  uart_number &= 0x0F;
+  if ( !check_sg_uart_number ( uart_number ) )
+    return 2;           // invalid uart number
+
+
+  if ( mode_eof )
+  {
+    u8 eof_marker = buffer[1];
+    u8 max_length = buffer[2];
+    u8 bytes_read;
+
+    if ( length < 3 )
+      return 1;           // invalid command length
+
+    HardwareSerial *port = get_com_port_ref(uart_number);
+    bytes_read = port->readBytesUntil(eof_marker, out_buffer + 3, max_length);
+
+    if ( bytes_read > 0 )
+    {
+      out_buffer[3 + bytes_read] = eof_marker;
+      bytes_read++;
+    }
+    
+    out_buffer[0] = buffer[0];
+    out_buffer[1] = buffer[1];
+    out_buffer[2] = bytes_read;
+
+    *out_length = (u16)3 + bytes_read;
+    return 0;
+  }
+  else
+  {
+    u8 byte_count = buffer[1];
+    u8 bytes_read;
+
+    if ( length < 2 )
+      return 1;           // invalid command length
+
+    HardwareSerial *port = get_com_port_ref(uart_number);
+    bytes_read = port->readBytes(out_buffer + 2, byte_count);
+
+    out_buffer[0] = buffer[0];
+    out_buffer[1] = bytes_read;
+    *out_length = (u16)2 + bytes_read;
+    return 0; 
+  }
+}
+
+/* format   : <sgST><uart-number><timeout_l><timeout_h>
+   response : <sgST><uart-number><timeout_l><timeout_h>
+    error codes = {
+      1 => "invalid command length"
+      2 => "invalid uart number"
+    }
+*/
+u8 service_sg_set_timeout (Char* buffer, u16 length, Char *out_buffer, u16 *out_length)
+{
+  u8 uart_number = buffer[0];
+  u16 timeout    = 0;
+
+  if ( length != 3 )
+    return 1;           // invalid command length
+
+  if ( !check_sg_uart_number ( uart_number ) )
+    return 2;           // invalid uart number
+
+  timeout = buffer[1] | ( ((u16)buffer[2]) << 8 );
+  
+  HardwareSerial *port = get_com_port_ref(uart_number);
+  port->setTimeout(timeout);
+  
+  out_buffer[0] = uart_number;
+  out_buffer[1] = buffer[1];
+  out_buffer[2] = buffer[2];
+  *out_length = 3;
+  return 0;
 }
 
 
@@ -259,7 +517,7 @@ static u8 calculate_lrc ( Byte *buffer, u8 length )
   return ~sum + 1;
 }
 
-i8 proto_try_read_request ( Byte* buffer, u8 *len, u8 max_size )
+i8 proto_try_read_request ( Byte* buffer, u16 *len, u16 max_size )
 {
   static bool byte_complete = false, frame_begun = false, frame_error = false;
 
@@ -334,9 +592,10 @@ void proto_send_error_reply (u8 code)
   proto_send_reply ( buffer, 2 );
 }
 
-void proto_send_reply (u8 *buffer, u8 length)
+void proto_send_reply (u8 *buffer, u16 length)
 {
-  u8 i, ascii_buffer[2];
+  u8 ascii_buffer[2];
+  u16 i;
 
   Serial.write ( ':' );
   for ( i = 0; i < length; i++ )
@@ -349,4 +608,8 @@ void proto_send_reply (u8 *buffer, u8 length)
   Serial.print ( "\r\n" );
 }
 
+HardwareSerial* get_com_port_ref (u8 com_port_id )
+{
+  return com_ports[com_port_id];
+}
 
