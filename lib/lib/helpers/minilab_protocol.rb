@@ -17,10 +17,13 @@
 # 		@carrier_protocol.serial_gateway_write bytes, port_number, baudrate, timeout
 # 	end
 # end
-class ProtocolEx < Exception
-end
 
-class MinilabProtocol
+[ 
+	"protocol_base",
+].each {|req| require "#{File.expand_path(File.dirname(__FILE__))}/#{req}"}
+
+
+class MinilabProtocol < Protocol
 	attr_accessor :coms
 
     ERROR_PACKET     = 0
@@ -93,13 +96,22 @@ class MinilabProtocol
 
 
 	def initialize(coms)
+		super
 		@coms = coms
 	end
 
 	def connect
-		response = send_command ECHO_COMMAND
-		check_response response, [ECHO_COMMAND]
+		@coms.open
+		ping
+		super
 		# reset
+	end
+
+	def ping(count=1)
+		count.times {
+			response = send_command ECHO_COMMAND
+			check_response response, [ECHO_COMMAND]
+		}
 	end
 
 	def reset
@@ -107,7 +119,12 @@ class MinilabProtocol
 		# check_response response, [RESET_COMMAND]
 	end
 
+	def open_gateway port_number, baudrate
+		return SerialGatewayComs.new self, port_number, baudrate
+	end
+
 	def read_pin number, type, metadata={}
+		check_pin_number number
 		check_type type
 
 		if type == :di
@@ -123,7 +140,7 @@ class MinilabProtocol
 			# figure out reference
 			reference = @@ai_references["default"]
 			reference = metadata["reference"] if metadata != nil && metadata.include?("reference")
-			raise "ProtocolEx MinilabProtocol: :ai reference can only be a Fixnum" if reference.class != Fixnum
+			raise ProtocolEx.new "MinilabProtocol: :ai reference can only be a Fixnum" if reference.class != Fixnum
 
 			response = send_command READ_AI_COMMAND, [number, reference]
 
@@ -136,12 +153,13 @@ class MinilabProtocol
 	end
 
 	def write_pin number, type, value
+		check_pin_number number
 		check_type type
 
 		if type == :do
 			value = 0 if value.class == FalseClass
 			value = 1 if value.class == TrueClass
-			raise ProtocolEx.new "MinilabProtocol: only true(1), false(0) can be written to digital-output pin" if value.class != Fixnum
+			raise ProtocolEx.new "MinilabProtocol: only true(1), false(0) can be written to digital-output pin" if (value.class != Fixnum) || (value != 0 && value != 1)
 
 			response = send_command WRITE_DO_COMMAND, [number, value]
 
@@ -202,6 +220,8 @@ class MinilabProtocol
 		response = send_command SG_WRITE, [com_port_id, bytes.length, bytes ]
 
 		check_response response, [SG_WRITE, com_port_id, bytes.length ]
+
+		return response[2]
 	end
 
 	def serial_gateway_read_until com_port_id, marker, max_read_length=220
@@ -217,7 +237,7 @@ class MinilabProtocol
 		return [], 0 if bytes_read == 0
 
 		expected_length = 4 + bytes_read
-		raise ProtocolEx.new "Firmware-protocol: improper response length received ('#{response.length}'), expected was '#{expected_length}'" if response.length != expected_length
+		raise ProtocolEx.new "Minilab firmware-protocol error: improper response length received ('#{response.length}'), expected was '#{expected_length}'" if response.length != expected_length
 		return response[4..4+bytes_read], bytes_read
 	end
 
@@ -253,8 +273,8 @@ class MinilabProtocol
 		bytes.each {  |f| frame += to_ascii(f) }
 		frame += "\n"
 
-
 		# write frame
+		@coms.flush
 		@coms.write frame
 
 		# read response
@@ -266,7 +286,7 @@ class MinilabProtocol
 		response_unpacked.pop
 		raise ProtocolEx.new "Firmware-protocol error: received odd length, indicates missing bytes" unless response_unpacked.length % 2 == 0
 		response = pack_response response_unpacked
-		encoded_checksum = response.pop
+		encoded_checksum = (response.pop) & 0xFF
 		calculated_checksum = calculate_checksum response
 		raise ProtocolEx.new "Firmware-protocol error: checksum error ('#{calculated_checksum}' != '#{encoded_checksum}')" if calculated_checksum != encoded_checksum
 
@@ -276,38 +296,6 @@ class MinilabProtocol
 
 
 	###### helpers
-
-	def calculate_checksum bytes
-		checksum = 0
-		
-		bytes.each {  |b| checksum += (b &0xFF) }
-		checksum &= 0xFF
-		return (~checksum + 1) & 0xFF
-	end
-
-	def to_ascii byte
-		return sprintf "%02X", byte & 0xFF
-	end
-
-	def pack_response loose_bytes
-		packed = []
-		complete_byte = false
-		half_byte = nil
-		loose_bytes.each {  |b|
-			if complete_byte
-				other_half = b - 0x30
-				other_half -=7 if other_half > 9
-				complete_byte = half_byte | other_half
-				packed.push complete_byte
-			else
-				half_byte = b - 0x30
-				half_byte -=7 if half_byte > 9
-				half_byte <<= 4
-			end
-			complete_byte = !complete_byte
-		}
-		return packed
-	end
 
 	def check_response response, expected_response=[], expected_length=nil
 		expected_response.flatten!
@@ -320,10 +308,10 @@ class MinilabProtocol
 			raise ProtocolEx.new "MinilabProtocol: command '#{command_name}' returned error-code '#{error_code}', '#{error_description}'"
 		end
 		expected_length = expected_response.length if expected_length == nil
-		raise ProtocolEx.new "Firmware-protocol: improper response length received ('#{response.length}'), expected was '#{expected_length}'" if response.length != expected_length
+		raise ProtocolEx.new "Minilab firmware-protocol error: improper response length received ('#{response.length}'), expected was '#{expected_length}'" if response.length != expected_length
 		max_length = (response.length > expected_response.length ? expected_response.length : response.length) - 1
 		for i in 0..max_length
-			raise ProtocolEx.new "Firmware-protocol: improper response received ('#{response}'), expected was '#{expected_response}'" if response[i] != expected_response[i]
+			raise ProtocolEx.new "Minilab firmware-protocol error: improper response received ('#{response}'), expected was '#{expected_response}'" if response[i] != expected_response[i]
 		end
 	end
 
@@ -331,102 +319,11 @@ class MinilabProtocol
 		raise ProtocolEx.new "MinilabProtocol: Pin type ('#{type}') is not supported!" unless @@supported_pin_types.include? type
 	end
 
-	# pack array into u16 little-endian
-	def pack16_le array
-		return ( (array[0]) | (array[1] << 8) ) & 0xFFFF
-	end
-
-	def unpack16_le value
-		return [ value & 0xFF, (( value >> 8 ) & 0xFF) ]
+	def check_pin_number number
+		raise ProtocolEx.new "MinilabProtocol: pin_number can only be a Fixnum! ('#{number}')" if number == nil || number.class != Fixnum
 	end
 
 	def check_com_port com_port_id
 		raise ProtocolEx.new "MinilabProtocol: only com_ports 1..3 are available." if com_port_id < 1 || com_port_id > 3
 	end
-
-
-=begin	
-	def serial_gateway_read byte_count, portnumber, baudrate, timeout=1000
-	end
-
-	# baud_rates = [300, 600, 1200, 2400, 4800, 9600, 14400, 19200, 28800, 38400, 57600, 115200]
-	# total 12
-	def serial_gateway_write bytes, portnumber, baudrate
- 		baud_rates = [300, 600, 1200, 2400, 4800, 9600, 14400, 19200, 28800, 38400, 57600, 115200]
-		bytes_broken = []
-		bytes.each {  |b|
-			upper = ( ( b >> 4 ) & 0xF )
-			upper += 7 if upper > 9
-			upper |= 0x30
-			bytes_broken.push upper
-
-			lower = ( ( b >> 4 ) & 0xF )
-			lower += 7 if lower > 9
-			lower |= 0x30
-			bytes_broken.push lower
-		}
-		bit
-		header = [0x3A, ]
-	end
-=end
 end
-
-
-[ 
-	"serial_port",
-].each {|req| require "#{File.expand_path(File.dirname(__FILE__))}/#{req}"}
-
-begin
-	port = Serial.new 'COM10', 115200
-	protocol = MinilabProtocol.new port
-	protocol.connect
-	puts "connected"
-	
-	# read digital input
-	pin_state = protocol.read_pin 22, :di
-	puts "pin #22 is '#{pin_state}'"
-
-	# read analog input
-	pin_state = protocol.read_pin 2, :ai
-	puts "pin #2 is '#{pin_state}'"
-
-	protocol.write_pin 23, :do, false
-	puts "pin #23 = false"
-
-	protocol.write_pin 5, :ao, 125
-	puts "pin #5 = 125"
-
-	puts "\n ==== GATEWAY ====\n"
-	protocol.serial_gateway_open 1
-	puts "gateway opened on comport #1"
-	protocol.serial_gateway_flush 1
-	protocol.serial_gateway_set_timeout 1, 2000
-	protocol.serial_gateway_write 1, [0x30, 0x31, 0x32, 0xD, 0xA]
-	buffer, bytes_read = protocol.serial_gateway_read 1, 5
-	puts "data read: #{bytes_read}, #{buffer}"
-
-	protocol.serial_gateway_write 1, [0x30, 0x31, 0x32, 0xD, 0xC, 0xB, 0xA]
-	buffer, bytes_read = protocol.serial_gateway_read_until 1, 0xA
-	puts "data read: #{bytes_read}, #{buffer}"
-	
-	
-	protocol.serial_gateway_close 1
-
-
-	# protocol
-	port.close
-
-rescue RubySerial::Exception => ex
-	if ex.message == "ERROR_FILE_NOT_FOUND"
-		puts "minilab board not connected with hardware" 
-	elsif ex.message == "ERROR_ACCESS_DENIED"
-		puts "minilab board is already connected with some other application."
-	else
-		puts "#{ex}"
-	end
-	port.close if port != nil && !port.closed?
-rescue => ex
-	port.close if port != nil && !port.closed?
-	puts "Error: #{ex.message}"
-end
-

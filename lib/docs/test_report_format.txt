@@ -1,0 +1,43 @@
+LED tests
+	red led toggle    : PASS
+	blue led toggle   : PASS
+	green led toggle  : PASS
+	yellow led toggle : FAIL
+	white led toggle  : PASS
+
+SCR tests 
+	scr toggle : FATAL
+
+Fan tests 
+	fan toggle : IGNORED
+
+adc tests 
+	volts       : PASS
+	amps        : PASS
+	temperature : PASS
+
+Low Voltage tests 
+	LED tests 
+		red led toggle    : PASS
+		blue led toggle   : PASS
+		green led toggle  : PASS
+		yellow led toggle : FAIL : expected 'on' was 'off'
+		white led toggle  : PASS
+	
+	SCR tests 
+		scr toggle : FATAL
+
+High Voltage tests 
+	boarding running : PASS
+
+-----------------------
+6 Fixtures 12 tests 1 Failures 1 Ignored 1 Fatal
+FATAL
+
+PASS
+FAIL
+FATAL
+
+
+1. Fixtures can nest fixtures
+2. Tests cannot next

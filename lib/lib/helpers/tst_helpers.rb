@@ -1,13 +1,4 @@
 
-class TestFailureEx < Exception
-end
-
-class TestSetupEx < Exception
-end
-
-class FatalEx < Exception
-end
-
 class Scale
 	def Scale.convert value, from, to
 		from = (from.last..from.first) if from.first > from.last
@@ -20,6 +11,80 @@ class Scale
 	end
 
 	def Scale.convert_percent value, scale
-		raise "Not Implemented!"
+		scale = (scale.last..scale.first) if scale.first > scale.last
+		return 0.0 if value < scale.first
+
+		return ((value - scale.first * 1.0) / (scale.last - scale.first)) * 100.0
 	end
+end
+
+class OptionMaker
+	def OptionMaker.parse(args)
+		args = [args] if args.class != Array
+		options = {}
+		filelist = []
+		args.each {  |arg|
+			arg.strip!
+			if (arg =~ /^-o\"?([a-zA-Z+0-9._\\\/:\s]+)\"?/)
+				options.merge! CMockConfig.load_config_file_from_yaml( arg.gsub(/^-o/,'') )
+			elsif (arg =~ /^--([a-zA-Z+0-9._\\\/:\s]+)=\"?([a-zA-Z+0-9._\\\/:\s\;]+)\"?/)  # match against "--key=value"
+				options = option_maker(options, $1, $2)
+			elsif (arg =~ /^--([a-zA-Z+0-9._\\\/:\s]+)/) # match agains "--key"
+				options = option_maker(options, $1, $2)
+			else
+			filelist << arg
+			end
+		}
+		return options, filelist
+	end
+
+	private
+	def OptionMaker.option_maker(options, key, val)
+		options = options || {}
+		key = key.strip.to_sym
+		# val = "" if val == nil
+		if val == nil
+			options[key] = nil
+			return options
+		end
+		options[key] =
+		if val.chr == ":"
+			val[1..-1].to_sym
+		elsif val.include? ";"
+			# appends the array values to previously parsed values
+			value = options[key]
+			value = [] unless value
+			value.push val.split(';').map(&:strip)
+			value.flatten!
+			value = value[0] if value.length == 1
+			value
+		elsif val == 'true'
+			true
+		elsif val == 'false'
+			false
+		elsif val =~ /^\d+$/
+			val.to_i
+		else
+			val
+		end
+		return options
+	end
+	
+end
+
+class Bridges
+	def Bridges.parse raw
+	end
+end
+
+def delay ms
+	sleep ms
+end
+
+def eputs message
+	STDERR << message
+end
+
+def abort(message='')
+	super message
 end

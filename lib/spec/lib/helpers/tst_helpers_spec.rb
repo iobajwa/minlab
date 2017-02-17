@@ -51,7 +51,43 @@ describe Scale do
 
 	describe "when converting a given value to percentage, should correct result when" do
 		it "value is less than scale.min" do
-			Scale.convert_percent(10, 20..400).should be == 0
+			Scale.convert_percent(10, 20..400).should be == 0.0
+		end
+		it "value is greater than scale.max" do
+			Scale.convert_percent(200, 0..100).should be == 200
+		end
+		it "value lies in between" do
+			Scale.convert_percent(135, 100..200).should be == 35.0
+		end
+	end
+end
+
+describe OptionMaker do
+	describe "when parsing options from the passed string, returns correct options when" do
+		it "a simple flag is passed" do
+			options, files = OptionMaker.parse "--flag"
+			files.should be_empty
+			options.should be == { :flag => nil }
+		end
+		it "multiple flags are passed" do
+			options, files = OptionMaker.parse ["--flag1", "-- flag2", "  -- flag3  "]
+			files.should be_empty
+			options.should be == { :flag1 => nil, :flag2 => nil, :flag3 => nil }
+		end
+		it "single key-value is provided" do
+			options, files = OptionMaker.parse ["--key=value"]
+			files.should be_empty
+			options.should be == { :key => "value" }
+		end
+		it "single key-value is provided with multiple values" do
+			options, files = OptionMaker.parse ["--key=v1;v2"]
+			files.should be_empty
+			options.should be == { :key => ["v1", "v2"] }
+		end
+		it "multiple key-values are provided with multiple values" do
+			options, files = OptionMaker.parse ["--k1=v1;", " -- k2 = v2  ; v3; ", "  -- k3 = v4 ;  "]
+			files.should be_empty
+			options.should be == { :k1 => "v1", :k2 => [ "v2", "v3" ], :k3 => "v4" }
 		end
 	end
 end

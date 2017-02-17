@@ -14,7 +14,7 @@ describe Pin do
 	before(:each) do
 		$dummy_protocol = []
 		$pin = Pin.new 'p', 23, :type, :rw
-		$pin.protocol_bridge = $dummy_protocol
+		$pin.bridge_protocol = $dummy_protocol
 	end
 
 	it "when performing a read, should delegate work to the underlying protocol" do
@@ -37,7 +37,7 @@ describe Pin do
 		end
 		it "raises exception when it does not have valid permissions" do
 			$pin.permissions = "mw"
-			expect { $pin.assert_read_access }.to raise_exception(TestSetupEx, "read on pin 'p' (23, mw) is not permitted.")
+			expect { $pin.assert_read_access }.to raise_exception(PinEx, "read on pin 'p' (23, mw) is not permitted.")
 		end
 	end
 
@@ -47,20 +47,59 @@ describe Pin do
 		end
 		it "raises exception when it does not have valid permissions" do
 			$pin.permissions = "mr"
-			expect { $pin.assert_write_access }.to raise_exception(TestSetupEx, "write on pin 'p' (23, mr) is not permitted.")
+			expect { $pin.assert_write_access }.to raise_exception(PinEx, "write on pin 'p' (23, mr) is not permitted.")
 		end
 	end
 end
 
 
-describe AnalogPin do
-	it "when instantiating a pin instance, returns correct instance" do
-		p = AnalogPin.new 'p', 23, :type, "rw", 0..100, 0..200
-		p.name.should be == 'p'
-		p.number.should be == 23
-		p.type.should be == :type
-		p.permissions.should be == "rw"
-		p.end_scale.should be == (0..100)
-		p.raw_scale.should be == (0..200)
+# describe AnalogPin do
+# 	it "when instantiating a pin instance, returns correct instance" do
+# 		p = AnalogPin.new 'p', 23, :type, "rw", 0..100, 0..200
+# 		p.name.should be == 'p'
+# 		p.number.should be == 23
+# 		p.type.should be == :type
+# 		p.permissions.should be == "rw"
+# 		p.end_scale.should be == (0..100)
+# 		p.raw_scale.should be == (0..200)
+# 	end
+# end
+
+
+# describe DigitalPin do
+# 	before(:each) do
+# 		$pin = DigitalPin.new 'p', 23, :type, "rw"
+# 	end
+# 	it "set" do
+# 		expect($pin).to receive(:write).with(true)
+# 		$pin.set
+# 	end
+# 	it "reset" do
+# 		expect($pin).to receive(:write).with(false)
+# 		$pin.reset
+# 	end
+# 	it "on" do
+# 		$pin.active_high = 'a'
+# 		expect($pin).to receive(:write).with('a')
+# 		$pin.on!
+# 	end
+# 	it "off" do
+# 		$pin.active_high = true
+# 		expect($pin).to receive(:write).with(false)
+# 		$pin.off!
+# 	end
+# end
+
+describe AnalogInputPin do
+	before(:each) do
+		$dummy_coms = []
+		$pin = AnalogInputPin.new 'p', 23, $dummy_coms, 0..100, 0..100
+	end
+
+	it "lies_within?" do
+		dummy_result = []
+		expect($pin).to receive(:read).and_return(dummy_result)
+		expect(dummy_result).to receive(:)
+		$pin.lies_within? 
 	end
 end

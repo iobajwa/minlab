@@ -62,3 +62,28 @@ describe "AnalogPin - Extended" do
 	end
 end
 
+describe "Fixnum - Extended" do
+	it "ms" do
+		3.ms.should be == 0.003
+	end
+	it "seconds" do
+		3.seconds.should be == 3
+		1.second.should be == 1
+	end
+	it "minutes" do
+		3.minutes.should be == 180
+		1.minute.should be == 60
+	end
+end
+
+describe "Float - Extended" do
+	it "ms" do
+		35.6.ms.should be == 0.0356
+	end
+	it "seconds" do
+		3.5.seconds.should be == 3.5
+	end
+	it "minutes" do
+		2.5.minutes.should be == 150
+	end
+end
