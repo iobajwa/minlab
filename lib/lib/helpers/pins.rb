@@ -105,6 +105,12 @@ class DigitalInputPin < DigitalPin
 		super(name, number, :di, "r", active_high, bridge_protocol)
 	end
 
+	def get_state
+		value = read
+		result = value == 1
+		return @active_high ? result : !result
+	end
+
 	def is_set
 		value = read
 		return false if value == 0

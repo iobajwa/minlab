@@ -29,12 +29,14 @@ class DigitalInputPin
 	[ :low?, :is_low?, :must_be_low, :should_be_low ].each {  |a| alias_method a, :is_low }
 
 	def is_on
-		$assert.is_on @name, state, @active_high
+		read_value = read()
+		$assert.is_on @name, read_value, @active_high
 	end
 	[ :should_be_on, :is_on?, :on?, :must_be_on ].each {  |a| alias_method a, :is_on }
 
 	def is_off
-		$assert.is_off @name, state, @active_high
+		read_value = read()
+		$assert.is_off @name, read_value, @active_high
 	end
 	[ :should_be_off, :is_off?, :off?, :must_be_off ].each {  |a| alias_method a, :is_off }
 

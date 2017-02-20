@@ -52,6 +52,7 @@ if $cli_options.include? :workbench
 	begin
 		f = find_file ['workbench.rb', 'workshop.rb']
 		abort "workbench file was not given and neither could find any." unless f
+		require "#{f}"
 	rescue => ex
 		eputs "Workbench error: #{ex.message}"
 		eputs "At: #{ex.backtrace}"

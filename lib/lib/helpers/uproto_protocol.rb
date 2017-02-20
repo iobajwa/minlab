@@ -36,9 +36,10 @@ class UProtoProtocol < Protocol
 
 	def write_pin number, type, value
 		raise ProtocolEx.new "uproto: only :do can be written" if type != :do
+		raise ProtocolEx.new "uproto: cannot write nil" if value == nil
 		value = 0 if value.class == FalseClass
 		value = 1 if value.class == TrueClass
-		raise ProtocolEx.new "uproto: only true(1), false(0) can be written to digital-output pin" if (value.class != Fixnum) || (value != 0 && value != 1)
+		raise ProtocolEx.new "uproto: invalid value passed ('#{value}'), only true(1), false(0) can be written to digital-output pin" if (value.class != Fixnum) || (value != 0 && value != 1)
 		number = number.to_s unless number.class == String
 		number = number[0]
 		number = number.downcase if value == 0

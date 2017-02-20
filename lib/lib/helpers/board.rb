@@ -12,6 +12,7 @@ class Board
 	end
 
 	def wire name, number, type, meta={}
+		meta = { meta => nil } if meta.class != Hash
 		raise "A pin by the name of '#{name}' has already been wired." if @pins.include? name
 		pin = nil
 		case type
@@ -20,10 +21,14 @@ class Board
 			active_high = meta[:active_high]
 			active_high = false if active_high == nil && meta.include?(:active_low)
 			active_high = true  if active_high == nil
-			raise "'#{name}, ##{number}': :active_high can only have true or false as values" unless active_high.class == TrueClass || active_high.class == FalseClass
+			raise "'#{name}, ##{number}': :active_high can only have true or false as values" unless active_high.class == TrueClass || active_high.class == FalseClass			
 			pin = DigitalInputPin.new name, number, active_high, @protocol
 		
 		when :do
+			active_high = meta[:active_high]
+			active_high = false if active_high == nil && meta.include?(:active_low)
+			active_high = true  if active_high == nil
+			raise "'#{name}, ##{number}': :active_high can only have true or false as values" unless active_high.class == TrueClass || active_high.class == FalseClass
 			pin = DigitalOutputPin.new name, number, active_high, @protocol
 			
 		when :ai
