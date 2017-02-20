@@ -1,9 +1,10 @@
 LED tests
-	red led toggle    : OK
-	blue led toggle   : OK
-	green led toggle  : OK
+	red led toggle
+	blue led toggle
+	green led toggle
 	yellow led toggle : FAIL
-	white led toggle  : OK
+	white led toggle
+	23.34 seconds
 
 SCR tests 
 	scr toggle : FATAL
@@ -12,29 +13,29 @@ Fan tests
 	fan toggle : IGNORED
 
 adc tests 
-	volts       : OK
-	amps        : OK
-	temperature : OK
+	volts
+	amps
+	temperature
 
 Low Voltage tests 
 	LED tests 
-		red led toggle    : OK
-		blue led toggle   : OK
-		green led toggle  : OK
+		red led toggle
+		blue led toggle
+		green led toggle
 		yellow led toggle : FAIL : expected 'on' was 'off'
-		white led toggle  : OK
+		white led toggle
 	
 	SCR tests 
 		scr toggle : FATAL
 
 High Voltage tests 
-	boarding running : OK
+	boarding running
 
 -----------------------
 6 Fixtures 12 tests 1 Failures 1 Ignored 1 Fatal
 FATAL
 
-OK
+ok
 FAIL
 FATAL
 

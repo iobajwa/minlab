@@ -5,16 +5,41 @@ class TestRunner
 	attr_accessor :test_group_pre_run, :test_group_post_run
 	attr_accessor :test_pre_run, :test_post_run
 
-	@depth
+	@depth; 
+	@group_count; @test_count; @total_pass; @total_fail; @total_ignored; @total_errors; @total_skipped; 
+	@results;
 
 	def initialize
 		@depth = 0
 	end
 
 	def execute(job, params={})
-		@depth = -1
-		_execute job, params
-		@depth = -1
+		@results = { :reports => {}, :stats => {} }
+		@depth         = -1
+		@group_count = 0
+		@test_count    = 0
+		@total_pass    = 0
+		@total_fail    = 0
+		@total_ignored = 0
+		@total_errors  = 0
+		@total_skipped = 0
+
+		start = Time.now
+			_execute job, params
+		finish = Time.now
+
+		@results[:stats] = { 
+			:total_groups  => @group_count,
+			:total_tests   => @test_count,
+			:total_pass    => @total_pass,
+			:total_fail    => @total_fail,
+			:total_ignored => @total_ignored,
+			:total_errors  => @total_errors,
+			:total_skipped => @total_skipped,
+			:total_time    => finish - start
+		}
+		
+		return @results
 	end
 
 	private
@@ -22,19 +47,28 @@ class TestRunner
 		# job can be a group, a group array, a test, a test array, or a mixed array
 		job = [job] if job.class != Array
 
-		results = {}
 		@depth += 1
 		job.each  {  |j|
 			if j.class == Test
 
+				@test_count += 1
 				@test_pre_run.call j, group, @depth if @test_pre_run
 					result, output = j.run params
 				@test_post_run.call j, result, output, group, @depth if @test_post_run
 
-				results[j.name] = { :result => result, :output => output }
+
+				@results[:reports][j.name] = { :result => result, :output => output }
+				case result
+				when :passed  then @total_pass += 1
+				when :failed  then @total_fail += 1
+				when :skipped then @total_skipped += 1
+				when :ignored then @total_ignored += 1
+				when :error   then @total_errors += 1
+				end
 
 			elsif j.class == TestGroup
 
+				@group_count += 1
 				@test_group_pre_run.call j, @depth if @test_group_pre_run
 					j.run_setup params
 						_execute j.list, params, j

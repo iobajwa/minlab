@@ -1,15 +1,8 @@
 $stdout.sync = true
 
-require_relative "board.rb"
-require_relative "serial_port.rb"
-require_relative "protocol_base.rb"
-require_relative "minilab_protocol.rb"
-require_relative "uproto_protocol.rb"
-require_relative "tst_runner.rb"
-require_relative "tst_helpers.rb"
-require_relative "tst_assert.rb"
-require_relative "pins.rb"
-require_relative "tst_extensions.rb"
+# automagically include every file in this folder, except for this file
+all_ruby_files = File.join File.expand_path(File.dirname(__FILE__)), "*.rb"
+Dir[all_ruby_files].each {  |f| require "#{f}" unless f == __FILE__ }
 
 # get any --com_port and --baud_rate settings passed from CLI
 $cli_options, $cli_files = OptionMaker.parse ARGV
@@ -74,10 +67,41 @@ begin
 	runner.test_post_run       = Proc.new {  |t, r, o, g, depth|
 		max_length = g.list_max_name_length
 		output = "  " * depth
-		output += sprintf "%-#{max_length}.#{max_length}s : #{o}", t.name
+		output += sprintf "%-#{max_length}.#{max_length}s", t.name
+		if r != :passed
+			case r
+			when :skipped then output += " : NA"
+			when :ignored then output += " : IGNORED"
+			when :error   then output += " : ERROR"
+			when :failed  then output += " : FAIL"
+			end
+			output += " : #{o}" unless o.length == 0
+		end
 		puts output
 	}
-	runner.execute $tests, $cli_options
+	results = runner.execute $tests, $cli_options
+	puts "-----------------------"
+	total_groups  = results[:stats][:total_groups]
+	total_tests   = results[:stats][:total_tests]
+	total_pass    = results[:stats][:total_pass]
+	total_fail    = results[:stats][:total_fail]
+	total_ignored = results[:stats][:total_ignored]
+	total_errors  = results[:stats][:total_errors]
+	total_skipped = results[:stats][:total_skipped]
+	total_time    = results[:stats][:total_time]
+	summary_statement = "#{total_groups} Groups #{total_tests} Tests"
+	summary_statement += " #{total_fail} Failures" if total_fail > 0
+	summary_statement += " #{total_errors} Errors " if total_errors > 0
+	summary_statement += " #{total_ignored} Ignored " if total_ignored > 0
+	summary_statement += "#{total_skipped} Skipped" if total_skipped > 0
+	puts summary_statement
+	puts "#{total_time} seconds"
+	puts ""
+	if total_fail > 0 || total_errors > 0
+		puts "FAIL"
+	else
+		puts "OK" 
+	end
 rescue => ex
 	eputs "Tests run error: #{ex.message}"
 	eputs "At: #{ex.backtrace}"
