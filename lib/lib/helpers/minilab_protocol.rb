@@ -18,9 +18,7 @@
 # 	end
 # end
 
-[ 
-	"protocol_base",
-].each {|req| require "#{File.expand_path(File.dirname(__FILE__))}/#{req}"}
+require_relative "protocol_base"
 
 
 class MinilabProtocol < Protocol
@@ -96,14 +94,14 @@ class MinilabProtocol < Protocol
 
 
 	def initialize(coms)
-		super
+		super()
 		@coms = coms
 	end
 
 	def connect
 		@coms.open
 		ping
-		super
+		super()
 		# reset
 	end
 

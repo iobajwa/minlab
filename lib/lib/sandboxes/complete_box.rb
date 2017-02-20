@@ -16,7 +16,7 @@ begin
 	gateway_port = SerialGatewayComs.new minilab_protocol, 1, 57600
 	gateway_port.open
 
-	uproto = UProto.new gateway_port
+	uproto = UProtoProtocol.new gateway_port
 	uproto.connect
 	puts "everything connected!"
 	# com_port.close

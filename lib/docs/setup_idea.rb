@@ -1,11 +1,9 @@
 
+port_number = get_config 'ARDUINO_COM_PORT'
+baud_rate   = get_config 'ARDUINO_BAUD_RATE'
 
-port_number = ENV['ARDUINO_COM_PORT']
-baud_rate   = ENV['ARDUINO_BAUD_RATE']
-raise "'ARDUINO_BAUD_RATE' not defined" unless baud_rate
-raise "'ARDUINO_COM_PORT' not defined"  unless port_number
 
-com_port         = Serial.new port_number, 115200
+com_port         = Serial.new port_number, baud_rate
 minilab_protocol = MinilabProtocol.new com_port
 
 arduino = Board.new 'arduino', minilab_protocol
@@ -27,8 +25,3 @@ pcb.wire 'mock_yellow_led_signal', 4, :do
 pcb.wire 'mock_white_led_signal',  5, :do
 pcb.wire 'mock_blue_led_signal',   6, :do
 pcb.wire 'mock_green_led_signal',  7, :do
-
-def mock_temperature_signal() return arduino.pins['mock_temperature_signal'] end
-
-arduino.connect
-pcb.connect

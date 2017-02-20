@@ -1,10 +1,7 @@
 
-[ 
-	"protocol_base",
-].each {|req| require "#{File.expand_path(File.dirname(__FILE__))}/#{req}"}
+require_relative "protocol_base"
 
-
-class UProto < Protocol
+class UProtoProtocol < Protocol
 	attr_accessor :coms, :attempts
 
 	ECHO_COMMAND  = ' '
@@ -12,16 +9,16 @@ class UProto < Protocol
 	@@commands = { ' ' => "echo", '~' => "reset" }
 
 	def initialize(coms, attempts=4)
-		super
 		@coms = coms
 		@attempts = attempts
+		super()
 	end
 
 	def connect
 		@coms.open
 		ping
 		reset
-		super
+		super()
 	end
 
 	def ping(count=1)

@@ -8,7 +8,7 @@
 
 begin
 	port = Serial.new 'COM3', 115200
-	uproto = UProto.new port
+	uproto = UProtoProtocol.new port
 
 	scr        = Pin.new "scr",        'S', :do, "rw", uproto
 	fan        = Pin.new "fan",        'F', :do, "rw", uproto

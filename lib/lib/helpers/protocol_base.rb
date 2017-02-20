@@ -1,7 +1,5 @@
 
-[ 
-	"serial_gateway",
-].each {|req| require "#{File.expand_path(File.dirname(__FILE__))}/#{req}"}
+require_relative "serial_gateway"
 
 class ProtocolEx < Exception
 end
@@ -23,7 +21,7 @@ class Protocol
 	end
 
 	def connected?
-		return connected
+		return @connected
 	end
 
 	def ping(count=1)

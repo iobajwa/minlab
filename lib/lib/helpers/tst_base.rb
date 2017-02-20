@@ -51,30 +51,52 @@ class Test
 end
 
 class TestGroup
-	attr_accessor :name, :purpose, :tests, :setup, :teardown
+	attr_accessor :name, :purpose, :list, :setup, :teardown
 	attr_accessor :abort_on_first_failure
 
 	# by default a test-suite is aborted 
-	def initialize(name, purpose, tests, setup=nil, teardown=nil)
+	def initialize(name, purpose, list, setup=nil, teardown=nil)
 		@name     = name
 		@purpose  = purpose
-		tests = [tests] if tests.class != Array
-		@tests    = tests
+		list = [list] if list.class != Array
+		# make sure list has objects of same type
+		first_class = list[0].class if list.length > 0
+		list.each {  |t| raise "TestGroup cannot house mixed class components for list" unless t.class == first_class }
+		@list    = list
 		@setup    = setup
 		@teardown = teardown
 		@abort_on_first_failure = false
 	end
 
-	def run(pre_run=nil, post_run=nil, pre_test_run=nil, post_test_run=nil)
+	def has_test_list?
+		return false if @list.length < 1
+		return @list[0].class == Test
+	end
+
+	def list_max_name_length
+		max_length = 0
+		@list.each {  |l| max_length = l.name.length if l.name.length > max_length }
+		return max_length
+	end
+
+	def run_setup params={}
+		@setup.call params if @setup
+	end
+
+	def run_teardown params={}
+		@teardown.call params if @teardown
+	end
+
+	def run
 		@setup.call if @setup !=nil
 
 		fixture_healthy = true
 		results = {}
-		if @tests != nil && tests.length > 0
+		if @list != nil && list.length > 0
 			count = 0
 			pre_run @name, @purpose if pre_run
-			if @tests[0].class == Test
-				@tests.each {  |t|
+			if @list[0].class == Test
+				@list.each {  |t|
 
 					pre_test_run.call t.name, t.purpose, count if pre_test_run
 
@@ -88,9 +110,9 @@ class TestGroup
 				}
 			post_run @name, @purpose if post_run
 			
-			elsif @tests[0].class == TestGroup
+			elsif @list[0].class == TestGroup
 				# nested group
-				@tests.each {  |g|
+				@list.each {  |g|
 					g.run( lambda {  |n,p| pre_run(n,p) if pre_run }, # pre_run
 						   lambda {  |n,p| post_run(n,p) if post_run },
 						   lambda {  |n,p,i| pre_test_run(n,p,i) if pre_test_run },

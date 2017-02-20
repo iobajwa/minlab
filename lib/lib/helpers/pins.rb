@@ -1,7 +1,5 @@
 
-[ 
-	"tst_helpers",
-].each {|req| require "#{File.expand_path(File.dirname(__FILE__))}/#{req}"}
+require_relative "tst_helpers"
 
 class PinEx < Exception
 end

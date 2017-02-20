@@ -1,7 +1,5 @@
 
-[ 
-	"tst_base.rb",
-].each {|req| require "#{File.expand_path(File.dirname(__FILE__))}/#{req}"}
+require_relative "tst_base.rb"
 
 class TestAssert
 

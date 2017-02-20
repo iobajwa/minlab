@@ -24,10 +24,8 @@ class OptionMaker
 		options = {}
 		filelist = []
 		args.each {  |arg|
-			arg.strip!
-			if (arg =~ /^-o\"?([a-zA-Z+0-9._\\\/:\s]+)\"?/)
-				options.merge! CMockConfig.load_config_file_from_yaml( arg.gsub(/^-o/,'') )
-			elsif (arg =~ /^--([a-zA-Z+0-9._\\\/:\s]+)=\"?([a-zA-Z+0-9._\\\/:\s\;]+)\"?/)  # match against "--key=value"
+			arg = arg.strip
+			if (arg =~ /^--([a-zA-Z+0-9._\\\/:\s]+)=\"?([a-zA-Z+0-9._\\\/:\s\;]+)\"?/)  # match against "--key=value"
 				options = option_maker(options, $1, $2)
 			elsif (arg =~ /^--([a-zA-Z+0-9._\\\/:\s]+)/) # match agains "--key"
 				options = option_maker(options, $1, $2)
@@ -82,9 +80,56 @@ def delay ms
 end
 
 def eputs message
-	STDERR << message
+	STDERR << message + "\n"
 end
 
-def abort(message='')
+def abort message=''
 	super message
+end
+
+def get_config name, silent=false
+	name_original = name
+	name = name.to_s.downcase
+	$cli_options.each_pair {  |key, value|
+		option = key.to_s.downcase
+		return value if option == name
+	}
+	ENV.each_pair {  |key, value|
+		option = key.to_s.downcase
+		return value if option == name
+	}
+	raise "'#{name_original}' is not defined." unless silent
+	return nil
+end
+
+def find_file conventional_names
+	conventional_names.each {  |cn|
+		f = _find_file cn
+		return f if f
+	}
+	return nil
+end
+
+def _find_file name
+	sole_name = File.basename name, ".*"
+	# begin by searching configs
+	f = get_config sole_name, true
+
+	# if not found in configs, search cli-files
+	$cli_files.each {  |cf|
+		c_f_name = File.basename cf, ".*"
+		if c_f_name.downcase == sole_name.downcase
+			f = cf
+			break
+		end
+	} unless f
+
+	# if not, check the current working directory
+	unless f
+		f = File.join Dir.pwd, 'name'
+		f = nil unless File.exist? f
+	end
+	
+	f = File.absolute_path f if f
+	return f
 end

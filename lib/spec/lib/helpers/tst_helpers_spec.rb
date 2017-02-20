@@ -1,5 +1,6 @@
 
 require "spec_helper"
+$cli_options = {}
 require "helpers\\tst_helpers"
 
 describe Scale do
@@ -91,3 +92,22 @@ describe OptionMaker do
 		end
 	end
 end
+
+describe "get_config" do
+	it "raises exception when no matching option found" do
+		expect { get_config 'Blah' }.to raise_exception("'Blah' is not defined.")
+	end
+
+	it "returns found entry from $cli_options upon a match" do
+		$cli_options = { :WHAT? => 1, :BLAH => 2 }
+		get_config('blah').should be == 2
+	end
+
+	it "returns found entry from ENV upon a match" do
+		$cli_options = { :WHAT? => 1, :BLAH2 => 2 }
+		ENV["haha"] = "3"
+		ENV["bLAH"] = "4"
+		get_config('blah').should be == "4"
+	end
+end
+

@@ -8,16 +8,18 @@ class Board
 		@name = name
 		@protocol = protocol
 		@pins = {}
+		@@all_instances << self
 	end
 
 	def wire name, number, type, meta={}
-		raise "A pin by the name of '#{name}' has already been wired." if @@pins.include? name
+		raise "A pin by the name of '#{name}' has already been wired." if @pins.include? name
 		pin = nil
 		case type
 		
 		when :di
 			active_high = meta[:active_high]
-			active_high = false if active_high == nil
+			active_high = false if active_high == nil && meta.include?(:active_low)
+			active_high = true  if active_high == nil
 			raise "'#{name}, ##{number}': :active_high can only have true or false as values" unless active_high.class == TrueClass || active_high.class == FalseClass
 			pin = DigitalInputPin.new name, number, active_high, @protocol
 		
@@ -47,12 +49,12 @@ class Board
 			raise "'#{name}, ##{number}': invalid pin type. Valid types are- [:di, :do, :ai, :ao]"
 		end
 
-		@@pins[name] = pin
+		@pins[name] = pin
 		return pin
 	end
 
 	def connect
-		@protocol.connect
+		@protocol.connect unless @protocol.connected?
 	end
 
 	def ping
@@ -64,6 +66,11 @@ class Board
 
 	def Board.all_boards
 		return @@all_instances
+	end
+
+	def Board.get_board name
+		@@all_instances.each {  |i| return i if i.name == name }
+		return nil
 	end
 end
 
