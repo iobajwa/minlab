@@ -36,9 +36,9 @@ class Test
 			setup.call     params if setup     != nil
 			execution.call params if execution != nil
 			teardown.call  params if teardown  != nil
-		rescue TestSkipEx > ex
+		rescue TestSkipEx => ex
 			return :skipped, ex.message
-		rescue TestIgnoreEx > ex
+		rescue TestIgnoreEx => ex
 			return :ignored, ex.message
 		rescue TestFailureEx => ex
 			return :failed, ex.message

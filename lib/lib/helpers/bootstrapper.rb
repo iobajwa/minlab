@@ -4,8 +4,10 @@ $stdout.sync = true
 all_ruby_files = File.join File.expand_path(File.dirname(__FILE__)), "*.rb"
 Dir[all_ruby_files].each {  |f| require "#{f}" unless f == __FILE__ }
 
+
 # get any --com_port and --baud_rate settings passed from CLI
 $cli_options, $cli_files = OptionMaker.parse ARGV
+
 
 # load wiring
 begin
@@ -17,8 +19,13 @@ begin
 	# create handy shortcut pin getter functions
 	abort "No boards defined!" if Board.all_boards.length == 0
 	Board.all_boards.each {  |board|
+		# create handy board shortcut
+		eval "$#{board.name} = Board.get_board('#{board.name}')"
+		eval "def #{board.name}() $#{board.name} end"
+
+		# create handy pin shortcuts
 		board.pins.each_pair {  |pin_name, pin|
-			eval "$#{pin_name} = Board.get_board('#{board.name}').pins['#{pin_name}']"
+			eval "$#{pin_name} = $#{board.name}.pins['#{pin_name}']"
 			eval "def #{pin_name}() $#{pin_name} end"
 		}
 	}
@@ -41,6 +48,17 @@ def register_tests(val)  $tests = val end
 def tests()     $tests       end
 def assert()    $assert      end
 
+if $cli_options.include? :workbench
+	begin
+		f = find_file ['workbench.rb', 'workshop.rb']
+		abort "workbench file was not given and neither could find any." unless f
+	rescue => ex
+		eputs "Workbench error: #{ex.message}"
+		eputs "At: #{ex.backtrace}"
+		abort
+	end
+	exit
+end
 
 # load tests
 begin
