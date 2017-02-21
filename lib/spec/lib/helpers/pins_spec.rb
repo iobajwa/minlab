@@ -105,18 +105,18 @@ describe AnalogInputPin do
 
 	describe "is_almost?" do
 		it "returns true when the value read is within the tolerance level" do
-			expect($pin).to receive(:read).and_return(45)
+			expect($pin).to receive(:read).and_return 40
 			$pin.is_almost?(50).should be true
 
-			expect($pin).to receive(:read).and_return(55)
+			expect($pin).to receive(:read).and_return 60
 			$pin.is_almost?(50).should be true
 		end
 
 		it "returns false when the value read is outside the tolerance level" do
-			expect($pin).to receive(:read).and_return(44)
+			expect($pin).to receive(:read).and_return 39
 			$pin.is_almost?(50).should be false
 
-			expect($pin).to receive(:read).and_return(56)
+			expect($pin).to receive(:read).and_return 61
 			$pin.is_almost?(50).should be false
 		end
 	end

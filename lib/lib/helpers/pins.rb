@@ -185,7 +185,7 @@ class AnalogInputPin < AnalogPin
 
 	def is_almost? reference, tolerance=10.0
 		read_value = read()
-		delta = (reference * tolerance) / 100
+		delta = ((@end_scale.last - @end_scale.first) * tolerance) / 100
 		return (reference-delta..reference+delta).include? read_value
 	end
 	[ :is_almost_equals?, :is_almost_equal_to?, :almost_equals?, :almost_equals_to? ].each {  |a| alias_method a, :is_almost? }

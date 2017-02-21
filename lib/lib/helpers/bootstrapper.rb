@@ -7,6 +7,9 @@ Dir[all_ruby_files].each {  |f| require "#{f}" unless f == __FILE__ }
 
 # get any --com_port and --baud_rate settings passed from CLI
 $cli_options, $cli_files = OptionMaker.parse ARGV
+
+# make sure settings make sense
+$cli_options[:repeat_count] = 1 if $cli_options[:repeat_count] == nil || $cli_options[:repeat_count] == 0
 # verbose = ( $cli_options.include?(:v) || $cli_options.include?(:verbose) ) ? true : false
 
 
@@ -48,6 +51,7 @@ def register_tests(val)  $tests = val end
 # def tests=(val) $tests = val end
 def tests()     $tests       end
 def assert()    $assert      end
+def settings()  $cli_options end
 
 if $cli_options.include?(:workbench) || $cli_options.include?(:wb)
 	begin
