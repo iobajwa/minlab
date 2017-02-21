@@ -53,11 +53,12 @@ class TestRunner
 
 				@test_count += 1
 				@test_pre_run.call j, group, @depth if @test_pre_run
+					start_time = Time.now
 					result, output = j.run params
-				@test_post_run.call j, result, output, group, @depth if @test_post_run
+					report = { :result => result, :output => output, :time => Time.now - start_time }
+				@test_post_run.call j, report, group, @depth if @test_post_run
 
-
-				@results[:reports][j.name] = { :result => result, :output => output }
+				@results[:reports][j.name] = report
 				case result
 				when :passed  then @total_pass += 1
 				when :failed  then @total_fail += 1

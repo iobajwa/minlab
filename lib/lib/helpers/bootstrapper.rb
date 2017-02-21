@@ -10,7 +10,7 @@ $cli_options, $cli_files = OptionMaker.parse ARGV
 
 # make sure settings make sense
 $cli_options[:repeat_count] = 1 if $cli_options[:repeat_count] == nil || $cli_options[:repeat_count] == 0
-# verbose = ( $cli_options.include?(:v) || $cli_options.include?(:verbose) ) ? true : false
+verbose = ( $cli_options.include?(:v) || $cli_options.include?(:verbose) ) ? true : false
 
 
 # load wiring
@@ -88,19 +88,21 @@ begin
 	max_test_name_length = 0
 	runner.test_group_pre_run  = Proc.new {  |g, depth| puts "  " * depth + "#{g.name}" }
 	runner.test_group_post_run = Proc.new { puts "" }
-	runner.test_post_run       = Proc.new {  |t, r, o, g, depth|
+	runner.test_post_run       = Proc.new {  |t, report, g, depth|
 		max_length = g.list_max_name_length
 		output = "  " * depth
 		output += sprintf "%-#{max_length}.#{max_length}s", t.name
-		if r != :passed
-			case r
+		result = report[:result]
+		if result != :passed
+			case result
 			when :skipped then output += " : NA"
 			when :ignored then output += " : IGNORED"
 			when :error   then output += " : ERROR"
 			when :failed  then output += " : FAIL"
 			end
-			output += " : #{o}" unless o.length == 0
+			output += " : #{report[:output]}"       unless report[:output].length == 0
 		end
+		output += " : #{sprintf "%3.3f", report[:time]} seconds" if verbose
 		puts output
 	}
 	results = runner.execute $tests, $cli_options
@@ -121,7 +123,7 @@ begin
 	summary_statement += "  #{total_ignored} Ignored " if total_ignored > 0
 	summary_statement += "  #{total_skipped} Skipped"  if total_skipped > 0
 	puts summary_statement
-	puts "#{$assert.assert_count} Asserts  #{total_time} seconds"
+	puts "#{$assert.assert_count} Asserts  #{sprintf "%3.3f", total_time} seconds"
 	puts ""
 	if total_fail > 0 || total_errors > 0
 		puts "FAIL"
