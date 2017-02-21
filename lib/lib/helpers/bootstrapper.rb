@@ -36,6 +36,10 @@ begin
 
 	# connect with every board
 	Board.all_boards.each {  |b| b.connect }
+rescue RubySerial::Exception => ex
+	eputs "Wiring error: #{ex.message}"
+	eputs "At: #{ex.backtrace}"
+	abort
 rescue => ex
 	eputs "Wiring error: #{ex.message}"
 	eputs "At: #{ex.backtrace}"
@@ -58,6 +62,10 @@ if $cli_options.include?(:workbench) || $cli_options.include?(:wb)
 		f = find_file ['workbench.rb', 'workshop.rb', 'wb.rb', 'ws.rb']
 		abort "workbench file was not given and neither could find any." unless f
 		require "#{f}"
+	rescue RubySerial::Exception => ex
+		eputs "Wiring error: #{ex.message}"
+		eputs "At: #{ex.backtrace}"
+		abort
 	rescue => ex
 		eputs "Workbench error: #{ex.message}"
 		eputs "At: #{ex.backtrace}"
@@ -131,6 +139,10 @@ begin
 		puts "OK" 
 	end
 
+rescue RubySerial::Exception => ex
+	eputs "Wiring error: #{ex.message}"
+	eputs "At: #{ex.backtrace}"
+	abort
 rescue => ex
 	eputs "Tests run error: #{ex.message}"
 	eputs "At: #{ex.backtrace}"
