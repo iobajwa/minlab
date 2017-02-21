@@ -151,6 +151,18 @@ class AnalogInputPin
 		:must_be_almost_full,    :must_be_almost_full_scale,    :must_be_almost_maximum,    :must_be_almost_max,
 		:shouuld_be_almost_full, :shouuld_be_almost_full_scale, :shouuld_be_almost_maximum, :shouuld_be_almost_max,
 	].each {  |a| alias_method a, :is_almost_full? }
+
+
+	def is_almost? reference, tolerance=10.0
+		read_value = read()
+		delta = (reference * tolerance) / 100
+		range = (reference-delta..reference+delta)
+
+		$assert.value_lies_within @name, read_value, range
+	end
+	[ :should_be_almost_equal_to, :must_be_almost_equal_to, :should_almost_equals, :must_almost_equals,
+	  :should_be_almost_equals_to, :must_be_almost_equals_to ].each {  |a| alias_method a, :is_almost? }
+
 end
 
 

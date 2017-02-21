@@ -97,6 +97,16 @@ class DigitalOutputPin < DigitalPin
 		write !@active_high
 	end
 	[ :off, :switch_off, :switch_off! ].each {  |a| alias_method a, :off! }
+
+
+	def toggle time=0.5, count=5
+		count.times {
+			on!
+			delay time
+			off!
+			delay time
+		}
+	end
 end
 
 class DigitalInputPin < DigitalPin
@@ -172,6 +182,13 @@ class AnalogInputPin < AnalogPin
 		return scaled_value
 		# return Scale.convert, raw_value
 	end
+
+	def is_almost? reference, tolerance=10.0
+		read_value = read()
+		delta = (reference * tolerance) / 100
+		return (reference-delta..reference+delta).include? read_value
+	end
+	[ :is_almost_equals?, :is_almost_equal_to?, :almost_equals?, :almost_equals_to? ].each {  |a| alias_method a, :is_almost? }
 
 	def lies_within? specified_range
 		read_value = read()
@@ -272,7 +289,7 @@ end
 
 class AnalogOutputPin < AnalogPin
 	def initialize(name, number, coms=nil, end_scale=0..1023, raw_scale=0..1023)
-		super(name, number, :ai, "r", coms, end_scale, raw_scale)
+		super(name, number, :ao, "w", coms, end_scale, raw_scale)
 	end
 
 	def write(value)

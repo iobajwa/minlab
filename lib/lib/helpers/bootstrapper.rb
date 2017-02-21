@@ -7,6 +7,7 @@ Dir[all_ruby_files].each {  |f| require "#{f}" unless f == __FILE__ }
 
 # get any --com_port and --baud_rate settings passed from CLI
 $cli_options, $cli_files = OptionMaker.parse ARGV
+# verbose = ( $cli_options.include?(:v) || $cli_options.include?(:verbose) ) ? true : false
 
 
 # load wiring
@@ -48,9 +49,9 @@ def register_tests(val)  $tests = val end
 def tests()     $tests       end
 def assert()    $assert      end
 
-if $cli_options.include? :workbench
+if $cli_options.include?(:workbench) || $cli_options.include?(:wb)
 	begin
-		f = find_file ['workbench.rb', 'workshop.rb']
+		f = find_file ['workbench.rb', 'workshop.rb', 'wb.rb', 'ws.rb']
 		abort "workbench file was not given and neither could find any." unless f
 		require "#{f}"
 	rescue => ex
@@ -114,7 +115,7 @@ begin
 	summary_statement += " #{total_ignored} Ignored " if total_ignored > 0
 	summary_statement += "#{total_skipped} Skipped" if total_skipped > 0
 	puts summary_statement
-	puts "#{total_time} seconds"
+	puts "#{total_time} seconds, #{$assert.assert_count} asserts"
 	puts ""
 	if total_fail > 0 || total_errors > 0
 		puts "FAIL"
