@@ -100,6 +100,8 @@ begin
 		puts output
 	}
 	results = runner.execute $tests, $cli_options
+	
+	# print summary
 	puts "-----------------------"
 	total_groups  = results[:stats][:total_groups]
 	total_tests   = results[:stats][:total_tests]
@@ -109,21 +111,23 @@ begin
 	total_errors  = results[:stats][:total_errors]
 	total_skipped = results[:stats][:total_skipped]
 	total_time    = results[:stats][:total_time]
-	summary_statement = "#{total_groups} Groups #{total_tests} Tests"
-	summary_statement += " #{total_fail} Failures" if total_fail > 0
-	summary_statement += " #{total_errors} Errors " if total_errors > 0
-	summary_statement += " #{total_ignored} Ignored " if total_ignored > 0
-	summary_statement += "#{total_skipped} Skipped" if total_skipped > 0
+	summary_statement = "#{total_groups} Groups  #{total_tests} Tests"
+	summary_statement += "  #{total_fail} Failures"    if total_fail > 0
+	summary_statement += "  #{total_errors} Errors "   if total_errors > 0
+	summary_statement += "  #{total_ignored} Ignored " if total_ignored > 0
+	summary_statement += "  #{total_skipped} Skipped"  if total_skipped > 0
 	puts summary_statement
-	puts "#{total_time} seconds, #{$assert.assert_count} asserts"
+	puts "#{$assert.assert_count} Asserts  #{total_time} seconds"
 	puts ""
 	if total_fail > 0 || total_errors > 0
 		puts "FAIL"
 	else
 		puts "OK" 
 	end
+
 rescue => ex
 	eputs "Tests run error: #{ex.message}"
 	eputs "At: #{ex.backtrace}"
 	abort
 end
+

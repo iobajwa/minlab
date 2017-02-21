@@ -16,14 +16,15 @@ end
 
 
 class Test
-	attr_accessor :name, :purpose, :execution, :setup, :teardown
+	attr_accessor :name, :purpose, :execution, :setup, :teardown, :options
 	
-	def initialize(name, purpose, execution, setup=nil, teardown=nil)
+	def initialize(name, purpose, execution, setup=nil, teardown=nil, options={})
 		@name      = name
 		@purpose   = purpose
 		@execution = execution
 		@setup     = setup
 		@teardown  = teardown
+		@options   = options
 	end
 
 	# returns test status
@@ -33,9 +34,14 @@ class Test
 	# => :failed upon fatal error (<unhandeled exception>)
 	def run(params=nil)
 		begin
-			setup.call     params if setup     != nil
-			execution.call params if execution != nil
-			teardown.call  params if teardown  != nil
+			settings = params.merge @options
+			repeat_count = settings[:repeat_count]
+			repeat_count = 1 unless repeat_count
+			repeat_count.times {
+				setup.call     settings if setup     != nil
+				execution.call settings if execution != nil
+				teardown.call  settings if teardown  != nil
+			}
 		rescue TestSkipEx => ex
 			return :skipped, ex.message
 		rescue TestIgnoreEx => ex
