@@ -115,16 +115,18 @@ class DigitalInputPin < DigitalPin
 		super(name, number, :di, "r", active_high, bridge_protocol)
 	end
 
+	def read
+		data = super
+		return data == 1
+	end
+
 	def get_state
 		value = read
-		result = value == 1
-		return @active_high ? result : !result
+		return @active_high ? value : !value
 	end
 
 	def is_set
-		value = read
-		return false if value == 0
-		return true
+		return read
 	end
 	[
 	  :is_set?, :set?,
@@ -132,9 +134,7 @@ class DigitalInputPin < DigitalPin
 	].each {  |a| alias_method a, :is_set }
 
 	def is_reset
-		value = read
-		return true if value == 0
-		return false
+		return !read
 	end
 	[
 	  :is_reset?, :reset?,
