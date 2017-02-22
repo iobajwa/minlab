@@ -62,6 +62,8 @@ if $cli_options.include?(:workbench) || $cli_options.include?(:wb)
 		f = find_file ['workbench.rb', 'workshop.rb', 'wb.rb', 'ws.rb']
 		abort "workbench file was not given and neither could find any." unless f
 		require "#{f}"
+	rescue Interrupt => e
+		abort "\naborted."
 	rescue RubySerial::Exception => ex
 		eputs "Wiring error: #{ex.message}"
 		eputs "At: #{ex.backtrace}"
@@ -143,6 +145,9 @@ rescue RubySerial::Exception => ex
 	eputs "Wiring error: #{ex.message}"
 	eputs "At: #{ex.backtrace}"
 	abort
+rescue Interrupt => e
+	eputs "\n\nTESTS ABORTED!"
+	abort "FAIL"
 rescue => ex
 	eputs "Tests run error: #{ex.message}"
 	eputs "At: #{ex.backtrace}"

@@ -34,6 +34,7 @@ class Protocol
 		complete_byte = false
 		half_byte = nil
 		loose_bytes.each {  |b|
+			raise "Protocol error: corrupt byte received ('#{b}')" if b < 0x30 || b > 0x46 || ( b > 0x39 && b < 0x41 )
 			if complete_byte
 				other_half = b - 0x30
 				other_half -=7 if other_half > 9
