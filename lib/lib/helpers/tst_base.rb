@@ -63,20 +63,15 @@ end
 
 class TestGroup
 	attr_accessor :name, :purpose, :list, :setup, :teardown
-	attr_accessor :abort_on_first_failure
 
 	# by default a test-suite is aborted 
 	def initialize(name, purpose, list, setup=nil, teardown=nil)
 		@name     = name
 		@purpose  = purpose
 		list = [list] if list.class != Array
-		# make sure list has objects of same type
-		first_class = list[0].class if list.length > 0
-		list.each {  |t| raise "TestGroup cannot house mixed class components for list" unless t.class == first_class }
-		@list    = list
+		@list     = list
 		@setup    = setup
 		@teardown = teardown
-		@abort_on_first_failure = false
 	end
 
 	def has_test_list?

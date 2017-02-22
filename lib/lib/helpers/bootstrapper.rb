@@ -97,7 +97,7 @@ begin
 	runner.test_group_pre_run  = Proc.new {  |g, depth| puts "  " * depth + "#{g.name}" }
 	runner.test_group_post_run = Proc.new { puts "" }
 	runner.test_post_run       = Proc.new {  |t, report, g, depth|
-		max_length = g.list_max_name_length
+		max_length = g ? g.list_max_name_length : t.name.length    # g might not even exist
 		output = "  " * depth
 		output += sprintf "%-#{max_length}.#{max_length}s", t.name
 		result = report[:result]

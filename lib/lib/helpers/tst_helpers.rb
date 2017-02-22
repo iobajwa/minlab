@@ -79,6 +79,12 @@ def delay ms
 	sleep ms
 end
 
+def forever
+	while true
+		yield
+	end
+end
+
 def eputs message
 	STDERR << message + "\n"
 end
