@@ -18,9 +18,10 @@ begin
 
 	uproto = UProtoProtocol.new gateway_port
 	uproto.connect
+	uproto.reset
 	puts "everything connected!"
-	# com_port.close
-	# exit
+	com_port.close
+	exit
 
 
 	scr        = DigitalOutputPin.new "scr",       'S', true, uproto

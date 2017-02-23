@@ -23,6 +23,7 @@ class SerialGatewayComs
 
 	def read_byte timeout=@timeout
 		data = read_bytes 1, timeout
+		return nil unless data
 		return data[0]
 	end
 

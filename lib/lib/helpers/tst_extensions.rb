@@ -156,7 +156,9 @@ class AnalogInputPin
 	def is_almost? reference, tolerance=10.0
 		read_value = read()
 		delta = ((@end_scale.last - @end_scale.first) * tolerance) / 100
-		range = (reference-delta..reference+delta)
+		start = reference-delta
+		start = 0 if start < 0
+		range = (start..reference+delta)
 
 		$assert.value_lies_within @name, read_value, range
 	end

@@ -9,15 +9,12 @@ class UProtoProtocol < Protocol
 	@@commands = { ' ' => "echo", '~' => "reset" }
 
 	def initialize(coms, attempts=4)
-		@coms = coms
 		@attempts = attempts
-		super()
+		super(coms)
 	end
 
 	def connect
 		@coms.open
-		ping
-		reset
 		super()
 	end
 
@@ -50,7 +47,9 @@ class UProtoProtocol < Protocol
 
 	def send_signal code, command_name=nil
 		response = nil
+		attempt_count = 0
 		@attempts.times {
+			attempt_count += 1
 			@coms.flush
 			@coms.write code
 			response = @coms.read_byte
@@ -62,7 +61,7 @@ class UProtoProtocol < Protocol
 		raise ProtocolEx.new "uproto: command not recoganized '#{command_name}'" if response == "?"
 
 		response = response.chr
-		raise ProtocolEx.new "uproto: received invalid reply ('#{response}') for command '#{command_name}' ('#{code}')" if response != code
+		raise ProtocolEx.new "uproto: received invalid reply ('#{response.bytes[0] & 0xFF}') for command '#{command_name}' ('#{code}'), (#{attempt_count} attempts)" if response != code
 	end
 
 	def read_frame code

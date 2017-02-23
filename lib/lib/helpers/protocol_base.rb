@@ -5,10 +5,12 @@ class ProtocolEx < Exception
 end
 
 class Protocol
+	attr_accessor :coms
 
 	connected=false
 
-	def initialize
+	def initialize(coms)
+		@coms = coms
 		@connected =  false
 	end
 
@@ -17,7 +19,14 @@ class Protocol
 	end
 
 	def connect
+		@coms.open if !@connected
 		@connected = true
+	end
+
+	def disconnect
+		return unless @connected
+		@coms.close
+		@connected = false
 	end
 
 	def connected?

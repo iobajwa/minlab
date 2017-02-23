@@ -108,34 +108,10 @@ def get_config name, silent=false
 	return nil
 end
 
-def find_file conventional_names
-	conventional_names.each {  |cn|
-		f = _find_file cn
-		return f if f
+def get_value aliases
+	$cli_options.each_pair {  |key,value|
+		aliases.each {  |a| return value if a == key }
 	}
 	return nil
 end
 
-def _find_file name
-	sole_name = File.basename name, ".*"
-	# begin by searching configs
-	f = get_config sole_name, true
-
-	# if not found in configs, search cli-files
-	$cli_files.each {  |cf|
-		c_f_name = File.basename cf, ".*"
-		if c_f_name.downcase == sole_name.downcase
-			f = cf
-			break
-		end
-	} unless f
-
-	# if not, check the current working directory
-	unless f
-		f = File.join Dir.pwd, 'name'
-		f = nil unless File.exist? f
-	end
-	
-	f = File.absolute_path f if f
-	return f
-end

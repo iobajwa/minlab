@@ -8,91 +8,107 @@ Dir[all_ruby_files].each {  |f| require "#{f}" unless f == __FILE__ }
 # get any --com_port and --baud_rate settings passed from CLI
 $cli_options, $cli_files = OptionMaker.parse ARGV
 
+
 # make sure settings make sense
 $cli_options[:repeat_count] = 1 if $cli_options[:repeat_count] == nil || $cli_options[:repeat_count] == 0
 verbose = ( $cli_options.include?(:v) || $cli_options.include?(:verbose) ) ? true : false
 
 
-# load wiring
-begin
-	# find a valid wiring file and load it
-	f = find_file ['wirings.rb', 'wiring.rb']
-	abort "wiring file was not given and neither could find any." unless f
-	require "#{f}"
-
-	# create handy shortcut pin getter functions
-	abort "No boards defined!" if Board.all_boards.length == 0
-	Board.all_boards.each {  |board|
-		# create handy board shortcut
-		eval "$#{board.name} = Board.get_board('#{board.name}')"
-		eval "def #{board.name}() $#{board.name} end"
-
-		# create handy pin shortcuts
-		board.pins.each_pair {  |pin_name, pin|
-			eval "$#{pin_name} = $#{board.name}.pins['#{pin_name}']"
-			eval "def #{pin_name}() $#{pin_name} end"
-		}
-	}
-
-	# connect with every board
-	Board.all_boards.each {  |b| b.connect }
-rescue RubySerial::Exception => ex
-	eputs "Wiring error: #{ex.message}"
-	eputs "At: #{ex.backtrace}"
-	abort
-rescue => ex
-	eputs "Wiring error: #{ex.message}"
-	eputs "At: #{ex.backtrace}"
-	abort
-end
-
-
 # create public level methods for tests, test_groups, test asserts
 $tests  = []
 $assert = TestAssert.new
-
 def register_tests(val)  $tests = val end
 # def tests=(val) $tests = val end
 def tests()     $tests       end
 def assert()    $assert      end
 def settings()  $cli_options end
+def wire(board, pin_name, pin_number, type, meta={})
+	board = Board.get_board board if board.class == String
+	pin = board.wire pin_name, pin_number, type, meta
+	eval "$#{pin_name} = pin"
+	eval "def #{pin_name}() $#{pin_name} end"
+end
+$workbench_code=nil
+def workbench(&code)
+	$workbench_code = code
+end
+[:workbench_code, :playground, :scratchpad, :scratch].each {  |m| (class << self; self; end).send :alias_method, m, :workbench }
 
-if $cli_options.include?(:workbench) || $cli_options.include?(:wb)
+
+# load passed files
+begin
+	# if not found in configs, search cli-files
+	if $cli_files.length == 0
+		# see if there is a single ruby file in the current working directory, if so, assume it to be the test file
+		ruby_files = File.join File.expand_path(Dir.pwd), "*.rb"
+		ruby_files = Dir[ruby_files]
+		abort "no test script found" if ruby_files.length == 0
+		abort "multiple scripts available in '#{Dir.pwd}' (#{ruby_files.length}).\nplease specify the actual test script." if ruby_files.length > 1
+		require "#{ruby_files[0]}"
+	else
+		$cli_files.each {  |cf|
+			f = File.absolute_path cf
+			require "#{f}"
+		}
+	end
+
+	# create handy shortcuts for each defined board and connect with each
+	Board.all_boards.each {  |b| 
+		eval "$#{b.name} = b"
+		eval "def #{b.name}() $#{b.name} end"
+		b.connect 
+	}
+rescue RubySerial::Exception => ex
+	eputs "Wiring error:\n\t#{ex.message}"
+	eputs "At:\n"
+	ex.backtrace.each {  |b| eputs "\t" + b}
+	abort
+rescue => ex
+	eputs "Wiring error:\n\t#{ex.message}"
+	eputs "At:\n"
+	ex.backtrace.each {  |b| eputs "\t" + b}
+	abort
+end
+
+
+# run workbench code if asked to do so
+if $cli_options.include?(:workbench) || $cli_options.include?(:wb) || $cli_options.include?(:playground) || $cli_options.include?(:pg)
+	# override exit
+	def exit
+		super
+	end
 	begin
-		f = find_file ['workbench.rb', 'workshop.rb', 'wb.rb', 'ws.rb']
-		abort "workbench file was not given and neither could find any." unless f
-		require "#{f}"
+		# invoke the file if a file has been provided
+		wb_file = get_value [:workbench, :wb, :playground, :pg, :scratchpad]
+		if wb_file
+			raise "'#{wb_file}' file does not exists!" unless File.exist? wb_file
+			wb_file = File.absolute_path wb_file
+			require "#{wb_file}"
+		else
+			raise "no workbench provided!" unless $workbench_code
+			$workbench_code.call
+		end
 	rescue Interrupt => e
 		abort "\naborted."
 	rescue RubySerial::Exception => ex
-		eputs "Wiring error: #{ex.message}"
-		eputs "At: #{ex.backtrace}"
+		eputs "Workbench error:\n\t#{ex.message}"
+		eputs "At:\n"
+		ex.backtrace.each {  |b| eputs "\t" + b}
 		abort
 	rescue => ex
-		eputs "Workbench error: #{ex.message}"
-		eputs "At: #{ex.backtrace}"
+		eputs "Workbench error:\n\t#{ex.message}"
+		eputs "At:\n"
+		ex.backtrace.each {  |b| eputs "\t" + b}
 		abort
 	end
 	exit
 end
 
-# load tests
-begin
-	# find a valid test file and load it
-	# find a valid wiring file and load it
-	f = find_file ['tests.rb', 'test.rb']
-	abort "test file was not given and neither could find any." unless f
-	require "#{f}"
-rescue => ex
-	eputs "Tests declaration error: #{ex.message}"
-	eputs "At: #{ex.backtrace}"
-	abort
-end
+
+# otherwise execute the tests
 abort "No tests defined! Make sure tests were properly added." if $tests == nil || $tests.class != Array || $tests.length == 0
 $tests.flatten!
 
-
-# execute tests
 begin
 	runner = TestRunner.new
 	max_test_name_length = 0
@@ -142,15 +158,16 @@ begin
 	end
 
 rescue RubySerial::Exception => ex
-	eputs "Wiring error: #{ex.message}"
-	eputs "At: #{ex.backtrace}"
+	eputs "Tests error:\n\t#{ex.message}"
+	eputs "At:\n"
+	ex.backtrace.each {  |b| eputs "\t" + b}
 	abort
 rescue Interrupt => e
 	eputs "\n\nTESTS ABORTED!"
 	abort "FAIL"
 rescue => ex
-	eputs "Tests run error: #{ex.message}"
-	eputs "At: #{ex.backtrace}"
+	eputs "Tests error:\n\t#{ex.message}"
+	eputs "At:\n"
+	ex.backtrace.each {  |b| eputs "\t" + b}
 	abort
 end
-

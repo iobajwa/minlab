@@ -22,7 +22,6 @@ require_relative "protocol_base"
 
 
 class MinilabProtocol < Protocol
-	attr_accessor :coms
 
     ERROR_PACKET     = 0
 	ECHO_COMMAND     = 1
@@ -91,12 +90,6 @@ class MinilabProtocol < Protocol
 		SG_READ        => { 1 => "invalid command length", 2 => "invalid com port id", },
 		SG_SET_TIMEOUT => { 1 => "invalid command length", 2 => "invalid com port id", },
 	}
-
-
-	def initialize(coms)
-		super()
-		@coms = coms
-	end
 
 	def connect
 		@coms.open
