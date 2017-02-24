@@ -23,8 +23,8 @@ wire arduino, 'temperature_alarm_probe', 35,        :di
 
 # write tests
 fan_tests = []
-fan_tests << Test.new( "Fan Test- Low temeprature", "checks if fan is switced off when temperature is below the threshold value", 
-					Proc.new {    # exeuction
+fan_tests << Test.new( "Fan Test - Low Temperature", "checks if fan is switched off when temperature is below the threshold value", 
+					Proc.new {    # execution
 						# setup
 						mock_temperature_signal << 50
 
@@ -33,8 +33,8 @@ fan_tests << Test.new( "Fan Test- Low temeprature", "checks if fan is switced of
 						temperature_alarm_probe.is_reset?
 					})
 
-fan_tests << Test.new( "Fan Test- Medium temeprature", "checks if fan is switced on when it's hot enough", 
-					Proc.new {    # exeuction
+fan_tests << Test.new( "Fan Test - Medium Temperature", "checks if fan is switched on when it's hot enough", 
+					Proc.new {    # execution
 						# setup
 						mock_temperature_signal << 65
 
@@ -43,10 +43,11 @@ fan_tests << Test.new( "Fan Test- Medium temeprature", "checks if fan is switced
 						temperature_alarm_probe.is_reset?
 					})
 
-fan_tests << Test.new( "Fan Test- High temeprature", "checks if fan is switched on when it's very hot and the temperature alarm is also fired", 
-					Proc.new {    # exeuction
+fan_tests << Test.new( "Fan Test - High Temperature", "checks if fan is switched on when it's very hot and the temperature alarm is also fired", 
+					Proc.new {    # execution
 						# setup
 						mock_temperature_signal << 80
+						delay 2.seconds
 
 						# assert
 						fan_probe.is_on?
@@ -60,11 +61,26 @@ register_tests fan_test
 
 ```
 
-and then inside the shell:
+and then inside the terminal:
 
 
 ```
 #!bash
 ruby minilab my_tests.rb
+
+```
+
+This will run the tests and produce the following output:
+
+```
+#!terminal
+Fan Test - Low Temperature    : OK
+Fan Test - Medium Temperature : OK
+Fan Test - High Temperature   : OK
+
+-----------------------
+0 Groups  3 tests
+6 Asserts  2.874 Seconds
+OK
 
 ```
