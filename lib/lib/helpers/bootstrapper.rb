@@ -28,11 +28,18 @@ def wire(board, pin_name, pin_number, type, meta={})
 	eval "$#{pin_name} = pin"
 	eval "def #{pin_name}() $#{pin_name} end"
 end
+
 $workbench_code=nil
 def workbench(&code)
 	$workbench_code = code
 end
 [:workbench_code, :playground, :scratchpad, :scratch].each {  |m| (class << self; self; end).send :alias_method, m, :workbench }
+
+$on_abort_code=nil
+def on_abort(&code)
+	$on_abort_code = code
+end
+[:on_exit, :when_aborted,].each {  |m| (class << self; self; end).send :alias_method, m, :on_abort }
 
 
 # load passed files
@@ -70,6 +77,12 @@ rescue => ex
 	abort
 end
 
+def disconnect_all_boards
+	# it makes sense to start disconnecting from the last board that was created. This is a simple way around the :gateway problem. :D
+	Board.all_boards.reverse.each {  |b| b.disconnect  }
+end
+
+
 
 # run workbench code if asked to do so
 if $cli_options.include?(:workbench) || $cli_options.include?(:wb) || $cli_options.include?(:playground) || $cli_options.include?(:pg)
@@ -89,6 +102,8 @@ if $cli_options.include?(:workbench) || $cli_options.include?(:wb) || $cli_optio
 			$workbench_code.call
 		end
 	rescue Interrupt => e
+		$on_abort_code.call if $on_abort_code
+		disconnect_all_boards
 		abort "\naborted."
 	rescue RubySerial::Exception => ex
 		eputs "Workbench error:\n\t#{ex.message}"
@@ -163,6 +178,8 @@ rescue RubySerial::Exception => ex
 	ex.backtrace.each {  |b| eputs "\t" + b}
 	abort
 rescue Interrupt => e
+	$on_abort_code.call if $on_abort_code
+	disconnect_all_boards
 	eputs "\n\nTESTS ABORTED!"
 	abort "FAIL"
 rescue => ex

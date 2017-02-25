@@ -7,8 +7,15 @@
 ].each {|req| require "#{File.expand_path(File.dirname(__FILE__))}/#{req}"}
 
 begin
-	port = Serial.new 'COM3', 115200
+	port = Serial.new 'COM3', 57600
 	uproto = UProtoProtocol.new port
+
+	10000.times {
+		uproto.ping
+	}
+
+	port.close
+	exit
 
 	scr        = Pin.new "scr",        'S', :do, "rw", uproto
 	fan        = Pin.new "fan",        'F', :do, "rw", uproto

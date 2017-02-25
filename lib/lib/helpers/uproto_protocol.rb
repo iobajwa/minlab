@@ -8,7 +8,7 @@ class UProtoProtocol < Protocol
 	RESET_COMMAND = '~'
 	@@commands = { ' ' => "echo", '~' => "reset" }
 
-	def initialize(coms, attempts=4)
+	def initialize(coms, attempts=6)
 		@attempts = attempts
 		super(coms)
 	end
@@ -55,6 +55,7 @@ class UProtoProtocol < Protocol
 			response = @coms.read_byte
 			response = response.chr if response
 			break if response == code
+			sleep 0.250
 		}
 		command_name = code unless command_name
 		raise ProtocolEx.new "uproto: received no response for command '#{command_name}'" if response == nil
