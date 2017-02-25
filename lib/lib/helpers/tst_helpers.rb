@@ -70,18 +70,13 @@ class OptionMaker
 	
 end
 
-class Bridges
-	def Bridges.parse raw
-	end
-end
-
 def delay ms
 	sleep ms
 end
 
-def forever
+def forever(&code)
 	while true
-		yield
+		code.call if code
 	end
 end
 

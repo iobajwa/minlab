@@ -17,8 +17,6 @@ verbose = ( $cli_options.include?(:v) || $cli_options.include?(:verbose) ) ? tru
 # create public level methods for tests, test_groups, test asserts
 $tests  = []
 $assert = TestAssert.new
-def register_tests(val)  $tests = val end
-# def tests=(val) $tests = val end
 def tests()     $tests       end
 def assert()    $assert      end
 def settings()  $cli_options end
@@ -28,23 +26,17 @@ def wire(board, pin_name, pin_number, type, meta={})
 	eval "$#{pin_name} = pin"
 	eval "def #{pin_name}() $#{pin_name} end"
 end
+def register_tests(val)  $tests = val end
 
-$workbench_code=nil
-def workbench(&code)
-	$workbench_code = code
-end
-[:workbench_code, :playground, :scratchpad, :scratch].each {  |m| (class << self; self; end).send :alias_method, m, :workbench }
+# useful overrides
+def workbench() end
+def on_abort()  end
+def wait() forever end
 
-$on_abort_code=nil
-def on_abort(&code)
-	$on_abort_code = code
-end
-[:on_exit, :when_aborted,].each {  |m| (class << self; self; end).send :alias_method, m, :on_abort }
 
 
 # load passed files
 begin
-	# if not found in configs, search cli-files
 	if $cli_files.length == 0
 		# see if there is a single ruby file in the current working directory, if so, assume it to be the test file
 		ruby_files = File.join File.expand_path(Dir.pwd), "*.rb"
@@ -83,41 +75,36 @@ def disconnect_all_boards
 end
 
 
+# cannot define these aliases before the user files are included coz ruby won't update the aliases to new overrides
+[:on_exit, :when_aborted, :when_aborting, :on_aborting].each         {  |m| (class << self; self; end).send :alias_method, m, :on_abort }
+[:workbench_code, :playground, :scratchpad, :scratch, :wb, :pg].each {  |m| (class << self; self; end).send :alias_method, m, :workbench }
 
-# run workbench code if asked to do so
-if $cli_options.include?(:workbench) || $cli_options.include?(:wb) || $cli_options.include?(:playground) || $cli_options.include?(:pg)
-	# override exit
-	def exit
-		super
-	end
-	begin
-		# invoke the file if a file has been provided
-		wb_file = get_value [:workbench, :wb, :playground, :pg, :scratchpad]
-		if wb_file
-			raise "'#{wb_file}' file does not exists!" unless File.exist? wb_file
-			wb_file = File.absolute_path wb_file
-			require "#{wb_file}"
-		else
-			raise "no workbench provided!" unless $workbench_code
-			$workbench_code.call
+
+# invoke workbench functions if asked to do so
+found_atleast_one_func = false
+begin
+	$cli_options.each_pair {  |k, v|
+		if self.private_methods.include? k.to_sym            # black magic
+			self.send k.to_sym
+			found_atleast_one_func = true
 		end
-	rescue Interrupt => e
-		$on_abort_code.call if $on_abort_code
-		disconnect_all_boards
-		abort "\naborted."
-	rescue RubySerial::Exception => ex
-		eputs "Workbench error:\n\t#{ex.message}"
-		eputs "At:\n"
-		ex.backtrace.each {  |b| eputs "\t" + b}
-		abort
-	rescue => ex
-		eputs "Workbench error:\n\t#{ex.message}"
-		eputs "At:\n"
-		ex.backtrace.each {  |b| eputs "\t" + b}
-		abort
-	end
-	exit
+	}
+rescue Interrupt => e
+	on_abort
+	disconnect_all_boards
+	abort "\naborted."
+rescue RubySerial::Exception => ex
+	eputs "Workbench error:\n\t#{ex.message}"
+	eputs "At:\n"
+	ex.backtrace.each {  |b| eputs "\t" + b}
+	abort
+rescue => ex
+	eputs "Workbench error:\n\t#{ex.message}"
+	eputs "At:\n"
+	ex.backtrace.each {  |b| eputs "\t" + b}
+	abort
 end
+exit if found_atleast_one_func
 
 
 # otherwise execute the tests
@@ -178,7 +165,7 @@ rescue RubySerial::Exception => ex
 	ex.backtrace.each {  |b| eputs "\t" + b}
 	abort
 rescue Interrupt => e
-	$on_abort_code.call if $on_abort_code
+	on_abort
 	disconnect_all_boards
 	eputs "\n\nTESTS ABORTED!"
 	abort "FAIL"
