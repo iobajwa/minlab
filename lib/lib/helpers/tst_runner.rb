@@ -68,12 +68,16 @@ class TestRunner
 				end
 
 			elsif j.class == TestGroup
-
+				settings = params.merge j.options
+				repeat_count = j.options[:repeat_count]
+				repeat_count = 1 unless repeat_count
 				@group_count += 1
 				@test_group_pre_run.call j, @depth if @test_group_pre_run
-					j.run_setup params
-						_execute j.list, params, j
-					j.run_teardown params
+					repeat_count.times {
+						j.run_setup params
+							_execute j.list, params, j
+						j.run_teardown params
+					}
 				@test_group_post_run.call j, @depth if @test_group_post_run
 			else
 				raise "TestRunner: 'tests' array can only contain Test and/or TestGroup objects ('#{j.class}')"

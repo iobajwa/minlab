@@ -62,26 +62,22 @@ class Test
 end
 
 class TestGroup
-	attr_accessor :name, :purpose, :list, :setup, :teardown
+	attr_accessor :name, :purpose, :list, :setup, :teardown, :options
 
 	# by default a test-suite is aborted 
-	def initialize(name, purpose, list, setup=nil, teardown=nil)
+	def initialize(name, purpose, list, setup=nil, teardown=nil, options={})
 		@name     = name
 		@purpose  = purpose
 		list = [list] if list.class != Array
 		@list     = list
 		@setup    = setup
 		@teardown = teardown
-	end
-
-	def has_test_list?
-		return false if @list.length < 1
-		return @list[0].class == Test
+		@options  = options
 	end
 
 	def list_max_name_length
 		max_length = 0
-		@list.each {  |l| max_length = l.name.length if l.name.length > max_length }
+		@list.each {  |l| max_length = l.name.length if l.name.length > max_length && l.class == Test }
 		return max_length
 	end
 

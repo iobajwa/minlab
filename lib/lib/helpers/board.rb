@@ -23,6 +23,7 @@ class Board
 		baud_rate = meta[:baud_rate] unless baud_rate
 		baud_rate = meta[:baudrate]  unless baud_rate
 		baud_rate = get_config "#{name.upcase}_BAUD_RATE", true unless baud_rate
+		baud_rate = 115200 if name == 'arduino' && baud_rate == nil
 
 		raise "Board '#{name}': could not identify port" unless port_number
 		raise "Board '#{name}': could not identify baud rate" unless baud_rate

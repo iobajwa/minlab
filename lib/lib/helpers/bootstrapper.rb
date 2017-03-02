@@ -114,22 +114,24 @@ $tests.flatten!
 begin
 	runner = TestRunner.new
 	max_test_name_length = 0
-	runner.test_group_pre_run  = Proc.new {  |g, depth| puts "  " * depth + "#{g.name}" }
-	runner.test_group_post_run = Proc.new { puts "" }
-	runner.test_post_run       = Proc.new {  |t, report, g, depth|
+	runner.test_group_pre_run  = Proc.new {  |g, depth| puts ""; puts "  " * depth + "#{g.name}" }
+	runner.test_pre_run        = Proc.new {  |t, g, depth| 
 		max_length = g ? g.list_max_name_length : t.name.length    # g might not even exist
 		output = "  " * depth
 		output += sprintf "%-#{max_length}.#{max_length}s", t.name
+		print output
+	}
+	runner.test_post_run = Proc.new {  |t, report, g, depth|
+		output = ""
 		result = report[:result]
-		if result != :passed
-			case result
-			when :skipped then output += " : NA"
-			when :ignored then output += " : IGNORED"
-			when :error   then output += " : ERROR"
-			when :failed  then output += " : FAIL"
-			end
-			output += " : #{report[:output]}"       unless report[:output].length == 0
+		case result
+		when :passed then output += " : OK"
+		when :skipped then output += " : NA"
+		when :ignored then output += " : IGNORED"
+		when :error   then output += " : ERROR"
+		when :failed  then output += " : FAIL"
 		end
+		output += " : #{report[:output]}" unless report[:output].length == 0 || result == :passed
 		output += " : #{sprintf "%3.3f", report[:time]} seconds" if verbose
 		puts output
 	}
@@ -170,6 +172,7 @@ rescue Interrupt => e
 	eputs "\n\nTESTS ABORTED!"
 	abort "FAIL"
 rescue => ex
+	disconnect_all_boards
 	eputs "Tests error:\n\t#{ex.message}"
 	eputs "At:\n"
 	ex.backtrace.each {  |b| eputs "\t" + b}
