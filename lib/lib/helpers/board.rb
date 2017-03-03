@@ -90,7 +90,7 @@ class Board
 
 			pin = AnalogOutputPin.new name, number, @protocol, end_scale, raw_scale
 		else
-			raise "'#{name}, ##{number}': invalid pin type. Valid types are- [:di, :do, :ai, :ao]"
+			raise "'#{name}, ##{number}': invalid pin type ('#{type}'). Valid types are- [:di, :do, :ai, :ao]"
 		end
 
 		@pins[name] = pin

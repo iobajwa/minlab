@@ -41,12 +41,20 @@ describe Scale do
 			result = Scale.convert -150, -200..-100, 1000..4000
 			result.should be == 2500
 		end
-		it "when scales presented are inverted" do
-			result = Scale.convert 50, 100..0, 0..1000
-			result.should be == 500
+		describe "when scales presented are inverted- " do
+			it "from is inverted" do
+				result = Scale.convert 25, 100..0, 0..1000
+				result.should be == 750
+			end
+			it "to is inverted" do
+				result = Scale.convert 25, 0..100, 1000..0
+				result.should be == 750
+			end
 
-			result = Scale.convert 50, 100..0, 1000..0
-			result.should be == 500
+			it "from & to, booth are inverted" do
+				result = Scale.convert 25, 100..0, 1000..0
+				result.should be == 250
+			end
 		end
 	end
 

@@ -1,13 +1,15 @@
 
 class Scale
 	def Scale.convert value, from, to
-		from = (from.last..from.first) if from.first > from.last
-		to = (to.last..to.first) if to.first > to.last
-		return to.first if value <= from.first
-		return to.last if value >= from.last
+		if from.first < from.last
+			return to.first if value <= from.first
+			return to.last  if value >= from.last
+		end
 
 		value *= 1.0
-		return ((to.last - to.first) * ( (value - from.first) / (from.last - from.first) ) + to.first).round
+		result = ((to.last - to.first) * ( (value - from.first) / (from.last - from.first) ) + to.first).round
+		result *= -1 if result < 0
+		return result
 	end
 
 	def Scale.convert_percent value, scale
