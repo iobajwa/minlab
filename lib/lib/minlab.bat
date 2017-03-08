@@ -1,1 +1,1 @@
-%~dp0/minilab.rb %*
+%~dp0minilab.rb %*
