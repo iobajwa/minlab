@@ -53,6 +53,7 @@ class TestRunner
 
 				@test_count += 1
 				@test_pre_run.call j, group, @depth if @test_pre_run
+					params[:group] = group.name if group
 					start_time = Time.now
 					result, output = j.run params
 					report = { :result => result, :output => output, :time => Time.now - start_time }

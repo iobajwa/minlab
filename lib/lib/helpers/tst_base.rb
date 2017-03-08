@@ -32,9 +32,9 @@ class Test
 	# => :ignored upon ignore (<message>)
 	# => :failed upon failure (<reasons>)
 	# => :failed upon fatal error (<unhandeled exception>)
-	def run(params=nil)
+	def run(params={})
+		settings = params.merge @options
 		begin
-			settings = params.merge @options
 			repeat_count = settings[:repeat_count]
 			repeat_count = 1 unless repeat_count
 			repeat_count.times {
@@ -43,12 +43,19 @@ class Test
 				teardown.call  settings if teardown  != nil
 			}
 		rescue TestSkipEx => ex
+			teardown.call settings if teardown  != nil
 			return :skipped, ex.message
 		rescue TestIgnoreEx => ex
+			teardown.call settings if teardown  != nil
 			return :ignored, ex.message
 		rescue TestFailureEx => ex
+			teardown.call settings if teardown  != nil
 			return :failed, ex.message
 		rescue => ex 							# some other fatal
+			begin
+				teardown.call settings if teardown  != nil
+			rescue
+			end
 			return :error, ex.message
 		end
 		return :passed, "ok"
