@@ -60,12 +60,12 @@ begin
 rescue RubySerial::Exception => ex
 	eputs "Wiring error:\n\t#{ex.message}"
 	eputs "At:\n"
-	ex.backtrace.each {  |b| eputs "\t" + b}
+	ex.backtrace.each {  |b| eputs "\t" + b  }
 	abort
 rescue => ex
 	eputs "Wiring error:\n\t#{ex.message}"
 	eputs "At:\n"
-	ex.backtrace.each {  |b| eputs "\t" + b}
+	ex.backtrace.each {  |b| eputs "\t" + b  }
 	abort
 end
 
@@ -96,12 +96,12 @@ rescue Interrupt => e
 rescue RubySerial::Exception => ex
 	eputs "Workbench error:\n\t#{ex.message}"
 	eputs "At:\n"
-	ex.backtrace.each {  |b| eputs "\t" + b}
+	ex.backtrace.each {  |b| eputs "\t" + b  }
 	abort
 rescue => ex
 	eputs "Workbench error:\n\t#{ex.message}"
 	eputs "At:\n"
-	ex.backtrace.each {  |b| eputs "\t" + b}
+	ex.backtrace.each {  |b| eputs "\t" + b  }
 	abort
 end
 exit if found_atleast_one_func
@@ -164,7 +164,7 @@ begin
 rescue RubySerial::Exception => ex
 	eputs "Tests error:\n\t#{ex.message}"
 	eputs "At:\n"
-	ex.backtrace.each {  |b| eputs "\t" + b}
+	ex.backtrace.each {  |b| eputs "\t" + b  }
 	abort
 rescue Interrupt => e
 	on_abort
@@ -175,6 +175,6 @@ rescue => ex
 	disconnect_all_boards
 	eputs "Tests error:\n\t#{ex.message}"
 	eputs "At:\n"
-	ex.backtrace.each {  |b| eputs "\t" + b}
+	ex.backtrace.each {  |b| eputs "\t" + b  }
 	abort
 end
