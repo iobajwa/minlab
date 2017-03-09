@@ -43,12 +43,13 @@ class TestRunner
 	end
 
 	private
-	def _execute(job, params, group=nil)
+	def _execute(job, params={}, group=nil)
 		# job can be a group, a group array, a test, a test array, or a mixed array
 		job = [job] if job.class != Array
 
 		@depth += 1
 		job.each  {  |j|
+
 			if j.class == Test
 
 				@test_count += 1
@@ -62,24 +63,28 @@ class TestRunner
 				@results[:reports][j.name] = report
 				case result
 				when :passed  then @total_pass += 1
-				when :failed  then @total_fail += 1
+				when :failed  
+					@total_fail += 1
+					break if params.include?(:abort_on_first_failure) || params.include?(:abort_on_first_fail)
 				when :skipped then @total_skipped += 1
 				when :ignored then @total_ignored += 1
 				when :error   then @total_errors += 1
 				end
 
 			elsif j.class == TestGroup
+
 				settings = params.merge j.options
 				repeat_count = j.options[:repeat_count]
 				repeat_count = 1 unless repeat_count
 				@group_count += 1
 				@test_group_pre_run.call j, @depth if @test_group_pre_run
 					repeat_count.times {
-						j.run_setup params
-							_execute j.list, params, j
-						j.run_teardown params
+						j.run_setup settings
+							_execute j.list, settings, j
+						j.run_teardown settings
 					}
 				@test_group_post_run.call j, @depth if @test_group_post_run
+
 			else
 				raise "TestRunner: 'tests' array can only contain Test and/or TestGroup objects ('#{j.class}')"
 			end
