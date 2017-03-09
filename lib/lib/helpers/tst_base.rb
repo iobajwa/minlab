@@ -79,6 +79,7 @@ class TestGroup
 		@list     = list
 		@setup    = setup
 		@teardown = teardown
+		options   = { options => nil } if options.class != Hash
 		@options  = options
 	end
 

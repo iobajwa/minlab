@@ -156,7 +156,7 @@ begin
 	puts "#{$assert.assert_count} Asserts  #{sprintf "%3.3f", total_time} seconds"
 	puts ""
 	if total_fail > 0 || total_errors > 0
-		puts "FAIL"
+		abort "FAIL"
 	else
 		puts "OK" 
 	end
