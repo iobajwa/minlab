@@ -20,11 +20,16 @@ $assert = TestAssert.new
 def tests()     $tests       end
 def assert()    $assert      end
 def settings()  $cli_options end
-def wire(board, pin_name, pin_number, type, meta={})
+def wire board, pin_name, pin_number, type, meta={}
 	board = Board.get_board board if board.class == String
 	pin = board.wire pin_name, pin_number, type, meta
 	eval "$#{pin_name} = pin"
 	eval "def #{pin_name}() $#{pin_name} end"
+end
+def wire_net name, pins
+	net = PinNetwork.new name, pins
+	eval "$#{name} = net"
+	eval "def #{name}() $#{name} end"
 end
 def register_tests(val)  $tests = val end
 
@@ -82,6 +87,7 @@ end
 
 # invoke workbench functions if asked to do so
 found_atleast_one_func = false
+$assert.silent = true
 begin
 	$cli_options.each_pair {  |k, v|
 		if self.private_methods.include? k.to_sym            # black magic
@@ -105,6 +111,7 @@ rescue => ex
 	abort
 end
 exit if found_atleast_one_func
+$assert.silent = false
 
 
 # otherwise execute the tests

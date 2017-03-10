@@ -1,23 +1,4 @@
 
-# class SerialGateway
-# 	attr_accessor :carrier_protocol, :port_number, :baudrate, :timeout
-
-# 	def initialize(carrier_protocol, port_number, baudrate, timeout)
-# 		@carrier_protocol = carrier_protocol
-# 		@port_number     = port_number
-# 		@baudrate        = baudrate
-# 		@timeout         = timeout
-# 	end
-
-# 	def read byte_count
-# 		return @carrier_protocol.serial_gateway_read byte_count, port_number, baudrate, timeout
-# 	end
-
-# 	def write bytes
-# 		@carrier_protocol.serial_gateway_write bytes, port_number, baudrate, timeout
-# 	end
-# end
-
 require_relative "protocol_base"
 
 
@@ -38,7 +19,9 @@ class MinilabProtocol < Protocol
     SG_READ        = 10
     SG_SET_TIMEOUT = 11
 
-    # RESET_COMMAND = 12
+    READ_NET       = 12
+
+    # RESET_COMMAND = 13
 
     @@commands = {
     	0 => "error-packet",
@@ -54,8 +37,9 @@ class MinilabProtocol < Protocol
 		9  => "serial-gateway-write",
 		10 => "serial-gateway-read",
 		11 => "serial-gateway-set_timeout",
+		12 => "read-net",
 
-    	# 12 => "reset",
+    	# 13 => "reset",
     }
 
 	@@supported_pin_types = [:di, :do, :ai, :ao]
@@ -89,6 +73,8 @@ class MinilabProtocol < Protocol
 		SG_WRITE       => { 1 => "invalid command length", 2 => "invalid com port id", },
 		SG_READ        => { 1 => "invalid command length", 2 => "invalid com port id", },
 		SG_SET_TIMEOUT => { 1 => "invalid command length", 2 => "invalid com port id", },
+
+		READ_NET => { 1 => "invalid pin count", 2 => "invalid pin number", },
 	}
 
 	def connect
@@ -243,6 +229,25 @@ class MinilabProtocol < Protocol
 		bytes_read = response[2]
 		return [], 0 if bytes_read == 0
 		return response[3..2+bytes_read], bytes_read
+	end
+
+	def read_pin_network pin_numbers
+		raise ProtocolEx.new "MinilabProtocol: read_pin_network, no pin number passed!"         if pin_numbers.length == 0
+		raise ProtocolEx.new "MinilabProtocol: read_pin_network, cannot read more than 64 pins" if pin_numbers.length > 64
+
+		response = send_command READ_NET, pin_numbers
+
+		expected_length = pin_numbers.length / 8
+		expected_length += 1 if pin_numbers.length % 8
+
+		check_response response[0..1], [READ_NET], (expected_length + 1)
+		result = []
+		response.shift
+		response.each {  |b|
+			(0..7).each {  |i| result.push( (b >> i) & 0x01 ) }
+		}
+
+		return result
 	end
 
 

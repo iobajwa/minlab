@@ -77,7 +77,8 @@ void service_request ( Byte *buffer, u16 length )
     case 10 : error_code = service_sg_read        ( buffer, length, out_buffer + 1, &out_length ); break;
     case 11 : error_code = service_sg_set_timeout ( buffer, length, out_buffer + 1, &out_length ); break;
 
-    // case 12: error_code = service_reset  ( buffer, length, out_buffer + 1, &out_length ); break;
+    case 12 : error_code = service_wire_net_read ( buffer, length, out_buffer + 1, &out_length ); break;
+    // case 13: error_code = service_reset  ( buffer, length, out_buffer + 1, &out_length ); break;
   }
   
   if ( error_code )
@@ -475,6 +476,58 @@ u8 service_sg_set_timeout (Char* buffer, u16 length, Char *out_buffer, u16 *out_
   *out_length = 3;
   return 0;
 }
+
+/* format   : <NR>[<pin-numbers>]
+   response : <NR>[<state_packed>]
+  error_codes = {
+    1 => "invalid pin count"
+    2 => "invalid pin number"
+  }
+*/
+u8 service_wire_net_read (Char* buffer, u16 length, Char *out_buffer, u16 *out_length)
+{
+  u8 i, byte_count;
+  u64 state_packed = 0;
+
+  if ( length == 0 || length > 64 )
+    return 1;           // invalid pin count
+
+  for ( i = 0; i < length; i++ )
+  {
+    u8 pin_number = buffer[i];
+
+    if ( check_digital_pin_number ( pin_number ) ) 
+    {
+      u8 state;
+
+      pinMode( pin_number, INPUT );
+      state = digitalRead( pin_number );
+
+      state_packed |= (state << i);
+    }
+    else
+      return 2;         // invalid pin number
+  }
+
+  /* dirty way :| */
+  out_buffer[0] = (u8)state_packed;
+  out_buffer[1] = (u8)(state_packed >> 8);
+  out_buffer[2] = (u8)(state_packed >> 16);
+  out_buffer[3] = (u8)(state_packed >> 24);
+  out_buffer[4] = (u8)(state_packed >> 32);
+  out_buffer[5] = (u8)(state_packed >> 40);
+  out_buffer[6] = (u8)(state_packed >> 48);
+  out_buffer[7] = (u8)(state_packed >> 56);
+
+  byte_count = (length / 8);
+  byte_count += (length % 8) ? 1 : 0;
+
+  *out_length = byte_count;
+  return 0;
+}
+
+
+
 
 
 

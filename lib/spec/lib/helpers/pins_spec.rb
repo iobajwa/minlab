@@ -14,7 +14,7 @@ describe Pin do
 	before(:each) do
 		$dummy_protocol = []
 		$pin = Pin.new 'p', 23, :type, :rw
-		$pin.bridge_protocol = $dummy_protocol
+		$pin.board_protocol = $dummy_protocol
 	end
 
 	it "when performing a read, should delegate work to the underlying protocol" do

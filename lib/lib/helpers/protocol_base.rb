@@ -37,6 +37,10 @@ class Protocol
 		raise "Not Implemented!"
 	end
 
+	def read_pin_network pin_numbers
+		raise "Not Implemented!"
+	end
+
 	# packs ascii-encoded frame into binary frames
 	def pack_response loose_bytes
 		packed = []

@@ -6,19 +6,19 @@ end
 
 class Pin
 	attr_accessor :number, :name, :type, :permissions
-	attr_accessor :bridge_protocol
+	attr_accessor :board_protocol
 
-	def initialize(name, number, type, permissions, bridge_protocol=nil)
+	def initialize(name, number, type, permissions, board_protocol=nil)
 		@name        = name
 		@number      = number
 		@type        = type
 		@permissions = permissions.class == String ? permissions : permissions.to_s
-		@bridge_protocol = bridge_protocol
+		@board_protocol = board_protocol
 	end
 
 	def read
 		assert_read_access
-		return @bridge_protocol.read_pin @number, @type
+		return @board_protocol.read_pin @number, @type
 	end
 
 	# def on
@@ -31,7 +31,7 @@ class Pin
 	
 	def write(value)
 		assert_write_access
-		@bridge_protocol.write_pin @number, @type, value
+		@board_protocol.write_pin @number, @type, value
 	end
 
 	def assert_read_access
@@ -53,8 +53,8 @@ class DigitalPin < Pin
 
 	attr_accessor :active_high
 
-	def initialize(name, number, type, permissions, active_high=true, bridge_protocol=nil)
-		super(name, number, type, permissions, bridge_protocol)
+	def initialize(name, number, type, permissions, active_high=true, board_protocol=nil)
+		super(name, number, type, permissions, board_protocol)
 		@active_high = active_high
 	end
 end
@@ -62,8 +62,8 @@ end
 
 class DigitalOutputPin < DigitalPin
 	
-	def initialize(name, number, active_high=true, bridge_protocol=nil)
-		super(name, number, :do, "w", active_high, bridge_protocol)
+	def initialize(name, number, active_high=true, board_protocol=nil)
+		super(name, number, :do, "w", active_high, board_protocol)
 	end
 
 	def set
@@ -110,13 +110,15 @@ class DigitalOutputPin < DigitalPin
 end
 
 class DigitalInputPin < DigitalPin
+
+	attr_accessor :pin_network
 	
-	def initialize(name, number, active_high=true, bridge_protocol=nil)
-		super(name, number, :di, "r", active_high, bridge_protocol)
+	def initialize(name, number, active_high=true, board_protocol=nil)
+		super(name, number, :di, "r", active_high, board_protocol)
 	end
 
 	def read
-		data = super
+		data = @pin_network == nil ? super : @pin_network.get_state( @name )
 		return data == 1
 	end
 
@@ -298,3 +300,49 @@ class AnalogOutputPin < AnalogPin
 	end
 	[:<<, :latch].each {  |a| alias_method a, :write }
 end
+
+
+
+
+
+class PinNetwork
+	attr_accessor :name, :pins, :pins_protocol
+	attr_accessor :pins_status, :pin_numbers
+
+	def initialize name, pins
+		pins = [pins] unless pins.class == Array
+		raise "PinNetwork '#{name}': no pin collection passed!" if pins.length == 0
+
+		first_protocol = pins[0].board_protocol
+		first_type     = pins[0].type
+		@pins_status = {}
+		@pin_numbers = []
+
+		raise "PinNetwork '#{name}': can only house :di pins" if first_type != :di
+		pins.each {  |p|
+			raise "PinNetwork '#{name}': collections can only be of base class Pin" unless p.class < Pin
+			raise "PinNetwork '#{name}': all pins must have same board_protocol" unless p.board_protocol == first_protocol
+			raise "PinNetwork '#{name}': all pins must be of same type" unless p.type == first_type
+			@pins_status[p.name] = nil
+			@pin_numbers.push p.number
+			p.pin_network = self
+		}
+
+		@name = name
+		@pins = pins
+		@pins_protocol = first_protocol
+	end
+
+
+	def read
+		states = @pins_protocol.read_pin_network @pin_numbers
+		@pins.each {  |p| @pins_status[p.name] = states.shift  }
+	end
+	[ :refresh, :update, :refresh!, :update!, :read! ].each {  |a| alias_method a, :read }
+
+	def get_state name
+		return @pins_status[name]
+	end
+end
+
+
