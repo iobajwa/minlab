@@ -301,7 +301,8 @@ class MinilabProtocol < Protocol
 			command_name = @@commands[command_code]
 			error_code = response[1]
 			error_description = @@error_codes[command_code][error_code]
-			raise ProtocolEx.new "MinilabProtocol: command '#{command_name}' returned error-code '#{error_code}', '#{error_description}'"
+			error_param = response[2]
+			raise ProtocolEx.new "MinilabProtocol: command '#{command_name}' returned error-code '#{error_code}', '#{error_description}' ('#{error_param}')."
 		end
 		expected_length = expected_response.length if expected_length == nil
 		raise ProtocolEx.new "Minilab firmware-protocol error: improper response length received ('#{response.length}'), expected was '#{expected_length}'" if response.length != expected_length
