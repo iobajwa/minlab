@@ -64,13 +64,13 @@ begin
 	}
 rescue RubySerial::Exception => ex
 	eputs "Wiring error:\n\t#{ex.message}"
-	eputs "At:\n"
-	ex.backtrace.each {  |b| eputs "\t" + b  }
+	eputs "At:\n" if verbose
+	ex.backtrace.each {  |b| eputs "\t" + b  } if verbose
 	abort
 rescue => ex
 	eputs "Wiring error:\n\t#{ex.message}"
-	eputs "At:\n"
-	ex.backtrace.each {  |b| eputs "\t" + b  }
+	eputs "At:\n" if verbose
+	ex.backtrace.each {  |b| eputs "\t" + b  } if verbose
 	abort
 end
 
@@ -101,13 +101,13 @@ rescue Interrupt => e
 	abort "\naborted."
 rescue RubySerial::Exception => ex
 	eputs "Workbench error:\n\t#{ex.message}"
-	eputs "At:\n"
-	ex.backtrace.each {  |b| eputs "\t" + b  }
+	eputs "At:\n" if verbose
+	ex.backtrace.each {  |b| eputs "\t" + b  } if verbose
 	abort
 rescue => ex
 	eputs "Workbench error:\n\t#{ex.message}"
-	eputs "At:\n"
-	ex.backtrace.each {  |b| eputs "\t" + b  }
+	eputs "At:\n" if verbose
+	ex.backtrace.each {  |b| eputs "\t" + b  } if verbose
 	abort
 end
 exit if found_atleast_one_func
@@ -115,7 +115,8 @@ $assert.silent = false
 
 
 # otherwise execute the tests
-abort "No tests defined! Make sure tests were properly added." if $tests == nil || $tests.class != Array || $tests.length == 0
+abort "No tests defined! Make sure tests were properly added." if $tests == nil || $tests.class != Array || ($tests.length == 0 && verbose)
+exit if tests.length == 0		# sometimes we use minlab just for sandboxing
 $tests.flatten!
 
 begin
@@ -170,8 +171,8 @@ begin
 
 rescue RubySerial::Exception => ex
 	eputs "Tests error:\n\t#{ex.message}"
-	eputs "At:\n"
-	ex.backtrace.each {  |b| eputs "\t" + b  }
+	eputs "At:\n" if verbose
+	ex.backtrace.each {  |b| eputs "\t" + b  } if verbose
 	abort
 rescue Interrupt => e
 	on_abort
@@ -181,7 +182,7 @@ rescue Interrupt => e
 rescue => ex
 	disconnect_all_boards
 	eputs "Tests error:\n\t#{ex.message}"
-	eputs "At:\n"
-	ex.backtrace.each {  |b| eputs "\t" + b  }
+	eputs "At:\n" if verbose
+	ex.backtrace.each {  |b| eputs "\t" + b  } if verbose
 	abort
 end
