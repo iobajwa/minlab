@@ -25,6 +25,8 @@ del "%base_path%\.rspec"
 echo copying "%base_path%/lib" to "%base_path%"
 xcopy /s "%base_path%/lib" "%base_path%"
 
+echo removing directory "%base_path%/lib"
+rmdir /s /q "%base_path%/lib"
 
 set env_load_script="%base_path%\paths.txt"
 echo creating environment script '%env_load_script%'
