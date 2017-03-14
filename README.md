@@ -1,4 +1,4 @@
-# *minilab* #
+# *minlab* #
 
 A PCB unit-testing framework. The firmware runs on an Arduino Mega and acts as an interface between the PCB and tests using a custom protocol on UART0. The tests are written in a ruby based DSL which provides high level asserts and helper functions along with a test runner.
 
@@ -56,7 +56,7 @@ fan_tests << Test.new( "Fan Test - High Temperature", "checks if fan is switched
 
 
 # register the tests with the test runner
-register_tests fan_test
+register_tests fan_tests
 
 
 ```
