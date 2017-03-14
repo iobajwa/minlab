@@ -16,6 +16,9 @@ rmdir /s /q "%base_path%\spec"
 echo removing directory "%base_path%\docs"
 rmdir /s /q "%base_path%\docs"
 
+echo removing directory "%base_path%/lib/sandboxes"
+rmdir /s /q "%base_path%/lib/sandboxes"
+
 echo deleting "%base_path%\.rspec"
 del "%base_path%\.rspec"
 
