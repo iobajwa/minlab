@@ -2,7 +2,7 @@
 [ 
 	"../helpers/serial_port",
 	"../helpers/serial_gateway",
-	"../helpers/minilab_protocol",
+	"../helpers/minlab_protocol",
 	"../helpers/uproto_protocol",
 	"../helpers/pins",
 	"../helpers/tst_extensions",
@@ -10,10 +10,10 @@
 
 begin
 	com_port = Serial.new 'COM10', 115200
-	minilab_protocol = MinilabProtocol.new com_port
-	minilab_protocol.connect
+	minlab_protocol = MinlabProtocol.new com_port
+	minlab_protocol.connect
 
-	gateway_port = SerialGatewayComs.new minilab_protocol, 1, 57600
+	gateway_port = SerialGatewayComs.new minlab_protocol, 1, 57600
 	gateway_port.open
 
 	uproto = UProtoProtocol.new gateway_port
@@ -30,13 +30,13 @@ begin
 	white_led  = DigitalOutputPin.new "white_led", 'W', true, uproto
 	yellow_led = DigitalOutputPin.new "white_led", 'Y', true, uproto
 
-	mock_temperature_signal = AnalogOutputPin.new "mock_temperature_signal", 5, minilab_protocol, 0..500, 0..255
+	mock_temperature_signal = AnalogOutputPin.new "mock_temperature_signal", 5, minlab_protocol, 0..500, 0..255
 
-	scr_probe        = DigitalInputPin.new "scr_probe",        30, true, minilab_protocol
-	red_led_probe    = DigitalInputPin.new "red_led_probe",    28, false, minilab_protocol
-	blue_led_probe   = DigitalInputPin.new "blue_led_probe",   22, false, minilab_protocol
-	white_led_probe  = DigitalInputPin.new "white_led_probe",  26, false, minilab_protocol
-	yellow_led_probe = DigitalInputPin.new "yellow_led_probe", 24, false, minilab_protocol
+	scr_probe        = DigitalInputPin.new "scr_probe",        30, true, minlab_protocol
+	red_led_probe    = DigitalInputPin.new "red_led_probe",    28, false, minlab_protocol
+	blue_led_probe   = DigitalInputPin.new "blue_led_probe",   22, false, minlab_protocol
+	white_led_probe  = DigitalInputPin.new "white_led_probe",  26, false, minlab_protocol
+	yellow_led_probe = DigitalInputPin.new "yellow_led_probe", 24, false, minlab_protocol
 
 	temperature_probe = AnalogInputPin.new "temperature_probe", 'T', uproto, 0..100, 0..100
 	amps_probe        = AnalogInputPin.new "amps_probe",        'A', uproto, 0..100, 0..100

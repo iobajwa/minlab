@@ -2,7 +2,7 @@
 require_relative "protocol_base"
 
 
-class MinilabProtocol < Protocol
+class MinlabProtocol < Protocol
 
     ERROR_PACKET     = 0
 	ECHO_COMMAND     = 1
@@ -117,7 +117,7 @@ class MinilabProtocol < Protocol
 			# figure out reference
 			reference = @@ai_references["default"]
 			reference = metadata["reference"] if metadata != nil && metadata.include?("reference")
-			raise ProtocolEx.new "MinilabProtocol: :ai reference can only be a Fixnum" if reference.class != Fixnum
+			raise ProtocolEx.new "MinlabProtocol: :ai reference can only be a Fixnum" if reference.class != Fixnum
 
 			response = send_command READ_AI_COMMAND, [number, reference]
 
@@ -125,7 +125,7 @@ class MinilabProtocol < Protocol
 			return pack16_le response[3..4]
 		
 		else
-			raise ProtocolEx.new "MinilabProtocol: Only :di and :ai pins can be read"
+			raise ProtocolEx.new "MinlabProtocol: Only :di and :ai pins can be read"
 		end
 	end
 
@@ -136,20 +136,20 @@ class MinilabProtocol < Protocol
 		if type == :do
 			value = 0 if value.class == FalseClass
 			value = 1 if value.class == TrueClass
-			raise ProtocolEx.new "MinilabProtocol: only true(1), false(0) can be written to digital-output pin" if (value.class != Fixnum) || (value != 0 && value != 1)
+			raise ProtocolEx.new "MinlabProtocol: only true(1), false(0) can be written to digital-output pin" if (value.class != Fixnum) || (value != 0 && value != 1)
 
 			response = send_command WRITE_DO_COMMAND, [number, value]
 
 			check_response response, [WRITE_DO_COMMAND, number, value]
 		
 		elsif type == :ao
-			raise ProtocolEx.new "MinilabProtocol: only Fixnum < 256 can be written to analog-output pin" if value.class != Fixnum || value > 255
+			raise ProtocolEx.new "MinlabProtocol: only Fixnum < 256 can be written to analog-output pin" if value.class != Fixnum || value > 255
 
 			response = send_command WRITE_AO_COMMAND, [number, value]
 
 			check_response response, [WRITE_AO_COMMAND, number, value]
 		else
-			raise ProtocolEx.new "MinilabProtocol: Only :do and :ao pins can be written"
+			raise ProtocolEx.new "MinlabProtocol: Only :do and :ao pins can be written"
 		end
 	end
 	
@@ -157,7 +157,7 @@ class MinilabProtocol < Protocol
 		check_com_port com_port_id
 
 		baudrate_index = @@comport_baudrates[baud_rate]
-		raise ProtocolEx.new "MinilabProtocol: invalid baudrate ('#{baud_rate}'), valid baudrates are: '#{@@comport_baudrates.keys}'" if baudrate_index == nil
+		raise ProtocolEx.new "MinlabProtocol: invalid baudrate ('#{baud_rate}'), valid baudrates are: '#{@@comport_baudrates.keys}'" if baudrate_index == nil
 
 		timeout_unpacked = unpack16_le timeout
 		response = send_command SG_OPEN, [com_port_id, baudrate_index, timeout_unpacked ]
@@ -192,7 +192,7 @@ class MinilabProtocol < Protocol
 
 	def serial_gateway_write com_port_id, bytes
 		check_com_port com_port_id
-		raise ProtocolEx.new "MinilabProtocol: cannot relay more than 220 bytes!" if bytes.length > 220
+		raise ProtocolEx.new "MinlabProtocol: cannot relay more than 220 bytes!" if bytes.length > 220
 
 		response = send_command SG_WRITE, [com_port_id, bytes.length, bytes ]
 
@@ -203,7 +203,7 @@ class MinilabProtocol < Protocol
 
 	def serial_gateway_read_until com_port_id, marker, max_read_length=220
 		check_com_port com_port_id
-		raise ProtocolEx.new "MinilabProtocol: cannot relay more than 220 bytes!" if max_read_length > 220
+		raise ProtocolEx.new "MinlabProtocol: cannot relay more than 220 bytes!" if max_read_length > 220
 
 		flags = (com_port_id | 0x10) & 0xFF
 		response = send_command SG_READ, [flags, marker, max_read_length]
@@ -214,13 +214,13 @@ class MinilabProtocol < Protocol
 		return [], 0 if bytes_read == 0
 
 		expected_length = 4 + bytes_read
-		raise ProtocolEx.new "Minilab firmware-protocol error: improper response length received ('#{response.length}'), expected was '#{expected_length}'" if response.length != expected_length
+		raise ProtocolEx.new "Minlab firmware-protocol error: improper response length received ('#{response.length}'), expected was '#{expected_length}'" if response.length != expected_length
 		return response[4..4+bytes_read], bytes_read
 	end
 
 	def serial_gateway_read com_port_id, byte_count
 		check_com_port com_port_id
-		raise ProtocolEx.new "MinilabProtocol: cannot relay more than 220 bytes!" if byte_count > 220
+		raise ProtocolEx.new "MinlabProtocol: cannot relay more than 220 bytes!" if byte_count > 220
 
 		response = send_command SG_READ, [com_port_id, byte_count]
 
@@ -232,8 +232,8 @@ class MinilabProtocol < Protocol
 	end
 
 	def read_pin_network pin_numbers
-		raise ProtocolEx.new "MinilabProtocol: read_pin_network, no pin number passed!"         if pin_numbers.length == 0
-		raise ProtocolEx.new "MinilabProtocol: read_pin_network, cannot read more than 64 pins" if pin_numbers.length > 64
+		raise ProtocolEx.new "MinlabProtocol: read_pin_network, no pin number passed!"         if pin_numbers.length == 0
+		raise ProtocolEx.new "MinlabProtocol: read_pin_network, cannot read more than 64 pins" if pin_numbers.length > 64
 
 		response = send_command READ_NET, pin_numbers
 
@@ -302,25 +302,25 @@ class MinilabProtocol < Protocol
 			error_code = response[1]
 			error_description = @@error_codes[command_code][error_code]
 			error_param = response[2]
-			raise ProtocolEx.new "MinilabProtocol: command '#{command_name}' returned error-code '#{error_code}', '#{error_description}' ('#{error_param}')."
+			raise ProtocolEx.new "MinlabProtocol: command '#{command_name}' returned error-code '#{error_code}', '#{error_description}' ('#{error_param}')."
 		end
 		expected_length = expected_response.length if expected_length == nil
-		raise ProtocolEx.new "Minilab firmware-protocol error: improper response length received ('#{response.length}'), expected was '#{expected_length}'" if response.length != expected_length
+		raise ProtocolEx.new "Minlab firmware-protocol error: improper response length received ('#{response.length}'), expected was '#{expected_length}'" if response.length != expected_length
 		max_length = (response.length > expected_response.length ? expected_response.length : response.length) - 1
 		for i in 0..max_length
-			raise ProtocolEx.new "Minilab firmware-protocol error: improper response received ('#{response}'), expected was '#{expected_response}'" if response[i] != expected_response[i]
+			raise ProtocolEx.new "Minlab firmware-protocol error: improper response received ('#{response}'), expected was '#{expected_response}'" if response[i] != expected_response[i]
 		end
 	end
 
 	def check_type type
-		raise ProtocolEx.new "MinilabProtocol: Pin type ('#{type}') is not supported!" unless @@supported_pin_types.include? type
+		raise ProtocolEx.new "MinlabProtocol: Pin type ('#{type}') is not supported!" unless @@supported_pin_types.include? type
 	end
 
 	def check_pin_number number
-		raise ProtocolEx.new "MinilabProtocol: pin_number can only be a Fixnum! ('#{number}')" if number == nil || number.class != Fixnum
+		raise ProtocolEx.new "MinlabProtocol: pin_number can only be a Fixnum! ('#{number}')" if number == nil || number.class != Fixnum
 	end
 
 	def check_com_port com_port_id
-		raise ProtocolEx.new "MinilabProtocol: only com_ports 1..3 are available." if com_port_id < 1 || com_port_id > 3
+		raise ProtocolEx.new "MinlabProtocol: only com_ports 1..3 are available." if com_port_id < 1 || com_port_id > 3
 	end
 end

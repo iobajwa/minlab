@@ -4,10 +4,10 @@ baud_rate   = get_config 'ARDUINO_BAUD_RATE'
 
 
 com_port         = Serial.new port_number, baud_rate
-minilab_protocol = MinilabProtocol.new com_port
+minlab_protocol = MinlabProtocol.new com_port
 
-arduino = Board.new 'arduino', minilab_protocol
-pcb     = Board.new 'pcb', minilab_protocol.open_gateway 1, 57600
+arduino = Board.new 'arduino', minlab_protocol
+pcb     = Board.new 'pcb', minlab_protocol.open_gateway 1, 57600
 
 arduino.wire 'mock_temperature_signal', 19, :ao
 arduino.wire 'mock_amps_signal',        19, :ao

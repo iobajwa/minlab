@@ -4,12 +4,12 @@ A PCB unit-testing framework. The firmware runs on an Arduino Mega and acts as a
 
 ### Quick overview ###
 
-Simply create a new test file which describes the tests to perform and execute those with minilab.
+Simply create a new test file which describes the tests to perform and execute those with minlab.
 ```
 #!ruby
 
 # create boards
-arduino = Board.new 'arduino', MinilabProtocol
+arduino = Board.new 'arduino', MinlabProtocol
 pcb     = Board.new 'pcb',     UProtoProtocol, { :gateway => arduino, :port => 1, :baud => 57600 }
 
 
@@ -66,7 +66,7 @@ and then inside the terminal:
 
 ```
 #!bash
-ruby minilab my_tests.rb
+ruby minlab my_tests.rb
 
 ```
 

@@ -1,11 +1,11 @@
 [ 
 	"../helpers/serial_port",
-	"../helpers/minilab_protocol",
+	"../helpers/minlab_protocol",
 	"../helpers/board",
 ].each {|req| require "#{File.expand_path(File.dirname(__FILE__))}/#{req}"}
 
 begin
-	lab = Board.new 'arduino', MinilabProtocol, { :port => 'COM10', :baud => 115200 }
+	lab = Board.new 'arduino', MinlabProtocol, { :port => 'COM10', :baud => 115200 }
 
 	lab.connect
 	puts "connected"
@@ -56,9 +56,9 @@ begin
 
 rescue RubySerial::Exception => ex
 	if ex.message == "ERROR_FILE_NOT_FOUND"
-		puts "minilab board not connected with hardware" 
+		puts "minlab board not connected with hardware" 
 	elsif ex.message == "ERROR_ACCESS_DENIED"
-		puts "minilab board is already connected with some other application."
+		puts "minlab board is already connected with some other application."
 	else
 		puts "#{ex}"
 	end
