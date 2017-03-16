@@ -40,6 +40,10 @@ class Board
 			rescue RubySerial::Exception => ex
 				raise "Board '#{name}': com_port '#{port_number}' and/or board already in use." if ex.message == "ERROR_ACCESS_DENIED"
 				raise "Board '#{name}': not found (Port '#{port_number}')." if ex.message == "ERROR_FILE_NOT_FOUND"
+				raise "Board '#{name}': has stopped responding (hung) or a general failure occurred on the device. Try manual reset. (Port '#{port_number}')." if ex.message == "ERROR_GEN_FAILURE"
+				raise "Board '#{name}': #{ex.message}"
+			rescue => ex
+				raise "Board '#{name}': #{ex.message}"
 			end
 		end
 
