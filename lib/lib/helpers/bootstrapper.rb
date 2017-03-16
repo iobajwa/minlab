@@ -41,6 +41,8 @@ def wait() forever end
 
 
 # load passed files
+$SANDBOXING = true
+$assert.silent = true
 begin
 	if $cli_files.length == 0
 		# see if there is a single ruby file in the current working directory, if so, assume it to be the test file
@@ -87,7 +89,6 @@ end
 
 # invoke sandbox functions if asked to do so
 found_atleast_one_func = false
-$assert.silent = true
 begin
 	$cli_options.each_pair {  |k, v|
 		if self.private_methods.include? k.to_sym            # black magic
@@ -107,6 +108,7 @@ rescue RubySerial::Exception, ProtocolEx, Exception => ex
 end
 exit if found_atleast_one_func
 $assert.silent = false
+$SANDBOXING = false
 
 
 # otherwise execute the tests

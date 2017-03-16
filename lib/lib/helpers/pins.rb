@@ -286,6 +286,14 @@ class AnalogInputPin < AnalogPin
 		:almost_full?,       :is_almost_full_scale?, :almost_full_scale?, 
 		:is_almost_maximum?, :almost_maximum?,       :is_almost_max?,     :almost_max?
 	].each {  |a| alias_method a, :is_almost_full? }
+
+
+	# returns pin.value if $SANDBOXING is defined
+	# returns pin-name 
+	def to_s
+		return read().to_s if $SANDBOXING
+		return super()
+	end
 end
 
 
