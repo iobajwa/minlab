@@ -34,7 +34,7 @@ end
 def register_tests(val)  $tests = val end
 
 # useful overrides
-def workbench() end
+def sandbox() end
 def on_abort()  end
 def wait() forever end
 
@@ -82,10 +82,10 @@ end
 
 # cannot define these aliases before the user files are included coz ruby won't update the aliases to new overrides
 [:on_exit, :when_aborted, :when_aborting, :on_aborting].each         {  |m| (class << self; self; end).send :alias_method, m, :on_abort }
-[:workbench_code, :playground, :scratchpad, :scratch, :wb, :pg].each {  |m| (class << self; self; end).send :alias_method, m, :workbench }
+[:sandboxing, :sandbox_code, :sandboxing_code, :sb ].each {  |m| (class << self; self; end).send :alias_method, m, :sandbox }
 
 
-# invoke workbench functions if asked to do so
+# invoke sandbox functions if asked to do so
 found_atleast_one_func = false
 $assert.silent = true
 begin
@@ -100,7 +100,7 @@ rescue Interrupt => e
 	disconnect_all_boards
 	abort "\naborted."
 rescue RubySerial::Exception, ProtocolEx, Ex => ex
-	eputs "\n\nWORKBENCH ERROR:\n\t#{ex.message}"
+	eputs "\n\nSANDBOXING ERROR:\n\t#{ex.message}"
 	eputs "At:\n" if verbose
 	ex.backtrace.each {  |b| eputs "\t" + b  } if verbose
 	abort
