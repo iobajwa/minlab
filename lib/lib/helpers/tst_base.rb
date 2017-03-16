@@ -31,7 +31,7 @@ class Test
 	# => :passed upon pass ("ok")
 	# => :ignored upon ignore (<message>)
 	# => :failed upon failure (<reasons>)
-	# => :failed upon fatal error (<unhandeled exception>)
+	# => :error upon fatal error (<unhandeled exception>)
 	def run(params={})
 		settings = params.merge @options
 		begin
@@ -51,7 +51,7 @@ class Test
 		rescue TestFailureEx => ex
 			teardown.call settings if teardown  != nil
 			return :failed, ex.message
-		rescue => ex 							# some other fatal
+		rescue ProtocolEx, Exception => ex                   # some other fatal
 			begin
 				teardown.call settings if teardown  != nil
 			rescue

@@ -68,7 +68,9 @@ class TestRunner
 					break if params.include?(:abort_on_first_failure) || params.include?(:abort_on_first_fail)
 				when :skipped then @total_skipped += 1
 				when :ignored then @total_ignored += 1
-				when :error   then @total_errors += 1
+				when :error
+					@total_errors += 1
+					break if params.include?(:abort_on_first_failure) || params.include?(:abort_on_first_fail)
 				end
 
 			elsif j.class == TestGroup
