@@ -99,7 +99,7 @@ rescue Interrupt => e
 	on_abort
 	disconnect_all_boards
 	abort "\naborted."
-rescue RubySerial::Exception, ProtocolEx, Ex => ex
+rescue RubySerial::Exception, ProtocolEx, Exception => ex
 	eputs "\n\nSANDBOXING ERROR:\n\t#{ex.message}"
 	eputs "At:\n" if verbose
 	ex.backtrace.each {  |b| eputs "\t" + b  } if verbose
