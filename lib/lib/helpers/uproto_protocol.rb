@@ -95,19 +95,20 @@ class UProtoProtocol < Protocol
 	###### helpers
 
 	def pack_to_fixnum bytes
+		# we are assuming that data is encoded in big-endian format (mostly we use sprintf in firmware to write data onto ASCII frame)
 		packed_result = 0
-		i = 0
+		i = bytes.length
 		bytes.each {  |b|
+			i -= 1
 			packed_result |= b << (8 * i)
-			i += 1
 		}
-		if bytes.length < 3
+		if bytes.length == 1
 			packed_result &= 0xFF
-		elsif bytes.length < 5
+		elsif bytes.length == 2
 			packed_result &= 0xFFFF
-		elsif bytes.length < 7
+		elsif bytes.length == 3
 			packed_result &= 0xFFFFFF
-		elsif bytes.length < 9
+		elsif bytes.length == 4
 			packed_result &= 0xFFFFFFFF
 		end
 			
