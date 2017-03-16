@@ -99,13 +99,8 @@ rescue Interrupt => e
 	on_abort
 	disconnect_all_boards
 	abort "\naborted."
-rescue RubySerial::Exception => ex
-	eputs "Workbench error:\n\t#{ex.message}"
-	eputs "At:\n" if verbose
-	ex.backtrace.each {  |b| eputs "\t" + b  } if verbose
-	abort
-rescue => ex
-	eputs "Workbench error:\n\t#{ex.message}"
+rescue RubySerial::Exception, ProtocolEx, Ex => ex
+	eputs "\n\nWORKBENCH ERROR:\n\t#{ex.message}"
 	eputs "At:\n" if verbose
 	ex.backtrace.each {  |b| eputs "\t" + b  } if verbose
 	abort
