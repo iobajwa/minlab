@@ -64,15 +64,12 @@ begin
 		eval "def #{b.name}() $#{b.name} end"
 		b.connect 
 	}
-rescue RubySerial::Exception => ex
+rescue RubySerial::Exception, Exception => ex
 	eputs "Wiring error:\n\t#{ex.message}"
-	eputs "At:\n" if verbose
-	ex.backtrace.each {  |b| eputs "\t" + b  } if verbose
-	abort
-rescue => ex
-	eputs "Wiring error:\n\t#{ex.message}"
-	eputs "At:\n" if verbose
-	ex.backtrace.each {  |b| eputs "\t" + b  } if verbose
+	if verbose
+		eputs "At:\n"
+		ex.backtrace.each {  |b| eputs "\t" + b  }
+	end
 	abort
 end
 
