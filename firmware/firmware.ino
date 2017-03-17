@@ -107,9 +107,14 @@ bool check_digital_pin_number(u8 pin_id)
   return pin_id > 21 && pin_id < 54;
 }
 
-bool check_analog_pin_number(u8 pin_id)
+bool check_ao_pin_number(u8 pin_id)
 {
   return pin_id < 14;
+}
+
+bool check_ai_pin_number(u8 pin_id)
+{
+  return pin_id < 16;
 }
 
 bool check_sg_uart_number(u8 uart_id)
@@ -208,7 +213,7 @@ bool service_read_analog_input (Char *buffer, u16 length, Char *out_buffer, u16 
   if ( ref > 3 )
     raise_error(3, ref);      // invalid reference
 
-  if ( check_analog_pin_number ( pin_number ) ) 
+  if ( check_ai_pin_number ( pin_number ) ) 
   {
     u8 ref_codes[] = { DEFAULT, INTERNAL1V1, INTERNAL2V56, EXTERNAL };
     u16 result;
@@ -242,7 +247,7 @@ bool service_write_analog_output (Char* buffer, u16 length, Char *out_buffer, u1
   if ( length != 2 )
     raise_error(1, length);     // invalid command length
 
-  if ( check_analog_pin_number ( pin_number ) ) 
+  if ( check_ao_pin_number ( pin_number ) ) 
   {
     pinMode     ( pin_number, OUTPUT );
     analogWrite ( pin_number, value );
