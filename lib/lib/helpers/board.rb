@@ -40,7 +40,7 @@ class Board
 			rescue RubySerial::Exception => ex
 				raise "Board '#{name}': com_port '#{port_number}' and/or board already in use." if ex.message == "ERROR_ACCESS_DENIED"
 				raise "Board '#{name}': not found (Port '#{port_number}')." if ex.message == "ERROR_FILE_NOT_FOUND"
-				raise "Board '#{name}': has stopped responding (hung) or a general failure occurred on the device. Try manual reset. (Port '#{port_number}')." if ex.message == "ERROR_GEN_FAILURE"
+				raise "Board '#{name}': stopped responding (hung) or some general failure occurred on the device. Try manual reset. (Port '#{port_number}')." if ex.message == "ERROR_GEN_FAILURE"
 				raise "Board '#{name}': #{ex.message}"
 			rescue => ex
 				raise "Board '#{name}': #{ex.message}"
@@ -55,14 +55,15 @@ class Board
 	end
 
 	def wire name, number, type, meta={}
+		meta = {} unless meta
 		meta = { meta => nil } if meta.class != Hash
 		raise "A pin by the name of '#{name}' has already been wired." if @pins.include? name
 		pin = nil
 		case type
-			when :di then pin = DigitalInputPin.parse name, number, meta
+			when :di then pin = DigitalInputPin.parse  name, number, meta
 			when :do then pin = DigitalOutputPin.parse name, number, meta
-			when :ai then pin = AnalogInputPin.parse name, number, meta
-			when :ao then pin = AnalogOutputPin.parse name, number, meta
+			when :ai then pin = AnalogInputPin.parse   name, number, meta
+			when :ao then pin = AnalogOutputPin.parse  name, number, meta
 			else raise "'#{name}, ##{number}': invalid pin type ('#{type}'). Valid types are- [:di, :do, :ai, :ao]"
 		end
 
