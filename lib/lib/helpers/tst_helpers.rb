@@ -96,7 +96,7 @@ def get_config name, silent=false
 	$cli_options.each_pair {  |key, value|
 		option = key.to_s.downcase
 		return value if option == name
-	}
+	} if $cli_options != nil
 	ENV.each_pair {  |key, value|
 		option = key.to_s.downcase
 		return value if option == name
@@ -108,7 +108,7 @@ end
 def get_value aliases
 	$cli_options.each_pair {  |key,value|
 		aliases.each {  |a| return value if a == key }
-	}
+	} if $cli_options != nil
 	return nil
 end
 
