@@ -20,14 +20,6 @@ class Pin
 		assert_read_access
 		return @board_protocol.read_pin @number, @type
 	end
-
-	# def on
-	# 	write(true)
-	# end
-
-	# def off
-	# 	write(false)
-	# end
 	
 	def write(value)
 		assert_write_access
@@ -56,6 +48,24 @@ class DigitalPin < Pin
 	def initialize(name, number, type, permissions, active_high=true, board_protocol=nil)
 		super(name, number, type, permissions, board_protocol)
 		@active_high = active_high
+	end
+
+	def DigitalPin.parse_meta name, number, meta={}
+		meta = { meta => nil } if meta.class != Hash
+
+		if meta.include?(:active_low)
+			active_low = meta[:active_low]
+			raise "Pin '#{name}' ('#{number}'): active_low can only be true or false ('#{active_low.class}')" if active_low != nil && active_low.class != TrueClass && active_low.class != FalseClass
+			active_high = active_low == nil ? false : !active_low
+		elsif meta.include?(:active_high)
+			active_high = meta[:active_high]
+			raise "Pin '#{name}' ('#{number}'): active_high can only be true or false ('#{active_high.class}')" if active_high != nil && active_high.class != TrueClass && active_high.class != FalseClass
+			active_high = active_high == nil ? true : active_high
+		else
+			active_high = true
+		end
+
+		return active_high
 	end
 end
 
@@ -107,6 +117,11 @@ class DigitalOutputPin < DigitalPin
 			delay time
 		}
 	end
+
+	def DigitalOutputPin.parse name, number, meta={}
+		active_high = DigitalPin.parse_meta name, number, meta
+		return DigitalOutputPin.new name, number, active_high
+	end
 end
 
 class DigitalInputPin < DigitalPin
@@ -156,6 +171,12 @@ class DigitalInputPin < DigitalPin
 		return @active_high ? state : !state
 	end
 	[ :is_off?, :off? ].each {  |a| alias_method a, :is_off }
+
+
+	def DigitalInputPin.parse name, number, meta={}
+		active_high = DigitalPin.parse_meta name, number, meta
+		return DigitalInputPin.new name, number, active_high
+	end
 end
 
 class AnalogPin < Pin
@@ -164,12 +185,53 @@ class AnalogPin < Pin
 	def initialize(name, number, type, permissions, coms=nil, end_scale=0..1023, raw_scale=0..1023)
 		super(name, number, type, permissions, coms)
 		@end_scale = end_scale
-		if raw_scale.class != Range
-
-		end
 		@raw_scale = raw_scale
 	end
 
+	def AnalogPin.parse_meta name, number, meta={}
+		meta = { meta => nil } if meta.class != Hash
+		# get aliases
+		meta[:raw_scale] = meta[:raw]   unless meta[:raw_scale]
+		meta[:end_scale] = meta[:scale] unless meta[:end_scale]
+		meta[:end_scale] = meta[:end]   unless meta[:end_scale]
+
+		raw_scale = meta[:raw_scale]
+		end_scale = meta[:end_scale]
+
+		if end_scale.class == Fixnum || end_scale.class == Float
+			if raw_scale.class == Range || raw_scale.class == Fixnum
+
+				# force defaults for raw_scale
+				raw_scale = (0..raw_scale) if raw_scale.class == Fixnum
+				
+				# convert end_scale to a range
+				end_first = raw_scale.first * end_scale
+				end_first = end_first.round if end_first.class == Float
+				end_last  = raw_scale.last * end_scale
+				end_last = end_last.round if end_last.class == Float
+
+				end_scale = (end_first..end_last)
+			elsif raw_scale != nil
+				raise "Pin '#{name}' ('#{number}'): raw_scale can only be a Fixnum, Range or nil when end_scale is a Fixnum/Float ('#{raw_scale.class}')"
+			end
+		elsif end_scale.class == Range
+			if raw_scale == nil
+				raw_scale = (0..1023)
+			elsif raw_scale.class != Range
+				raise "Pin '#{name}' ('#{number}'): raw_scale can only be a Range or nil when end_scale is a Range ('#{raw_scale.class}')"
+			end
+		elsif end_scale == nil
+			raise "Pin '#{name}' ('#{number}'): raw_scale can only be a Range when no end_scale is provided ('#{raw_scale.class}')" if raw_scale != nil && raw_scale.class != Range
+			end_scale = raw_scale
+
+			end_scale = 0..1023 if end_scale == nil
+			raw_scale = 0..1023 if raw_scale == nil
+		else
+			raise "Pin '#{name}' ('#{number}'): end_scale can only be a Fixnum, Float or Range ('#{end_scale.class}')"
+		end
+
+		return raw_scale, end_scale
+	end
 end
 
 class AnalogInputPin < AnalogPin
@@ -180,9 +242,15 @@ class AnalogInputPin < AnalogPin
 
 	def read
 		raw_value = super()
-		scaled_value = Scale.convert raw_value, @raw_scale, @end_scale
-		return scaled_value
-		# return Scale.convert, raw_value
+		
+		return raw_value if @end_scale == nil && @raw_scale == nil
+
+		if @end_scale.class == Fixnum || @end_scale.class == Float
+			result = raw_value * @end_scale 
+			return @end_scale.class == Float ? result.round : result
+		end
+
+		return Scale.convert raw_value, @raw_scale, @end_scale
 	end
 
 	def is_almost? reference, tolerance=10.0
@@ -294,6 +362,12 @@ class AnalogInputPin < AnalogPin
 		return read().to_s if $SANDBOXING
 		return super()
 	end
+
+
+	def AnalogInputPin.parse name, number, meta={}
+		raw_scale, end_scale = AnalogPin.parse_meta name, number, meta
+		return AnalogInputPin.new name, number, nil, end_scale, raw_scale
+	end
 end
 
 
@@ -307,6 +381,11 @@ class AnalogOutputPin < AnalogPin
 		super raw_value
 	end
 	[:<<, :latch].each {  |a| alias_method a, :write }
+
+	def AnalogOutputPin.parse name, number, meta={}
+		raw_scale, end_scale = AnalogPin.parse_meta name, number, meta
+		return AnalogOutputPin.new name, number, nil, end_scale, raw_scale
+	end
 end
 
 

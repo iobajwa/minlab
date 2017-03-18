@@ -59,44 +59,14 @@ class Board
 		raise "A pin by the name of '#{name}' has already been wired." if @pins.include? name
 		pin = nil
 		case type
-		
-		when :di
-			active_high = meta[:active_high]
-			active_high = false if active_high == nil && meta.include?(:active_low)
-			active_high = true  if active_high == nil
-			raise "'#{name}, ##{number}': :active_high can only have true or false as values" unless active_high.class == TrueClass || active_high.class == FalseClass			
-			pin = DigitalInputPin.new name, number, active_high, @protocol
-		
-		when :do
-			active_high = meta[:active_high]
-			active_high = false if active_high == nil && meta.include?(:active_low)
-			active_high = true  if active_high == nil
-			raise "'#{name}, ##{number}': :active_high can only have true or false as values" unless active_high.class == TrueClass || active_high.class == FalseClass
-			pin = DigitalOutputPin.new name, number, active_high, @protocol
-			
-		when :ai
-			end_scale = meta[:end_scale]
-			end_scale = 0..1023 if end_scale == nil
-			raw_scale = meta[:raw_scale]
-			raw_scale = 0..1023 if raw_scale == nil
-			raise "'#{name}, ##{number}': :end_scale can only have Range as value" unless end_scale.class == Range
-			raise "'#{name}, ##{number}': :raw_scale can only have Range as value" unless raw_scale.class == Range
-
-			pin = AnalogInputPin.new name, number, @protocol, end_scale, raw_scale
-			
-		when :ao
-			end_scale = meta[:end_scale]
-			end_scale = 0..1023 if end_scale == nil
-			raw_scale = meta[:raw_scale]
-			raw_scale = 0..1023 if raw_scale == nil
-			raise "'#{name}, ##{number}': :end_scale can only have Range as value" unless end_scale.class == Range
-			raise "'#{name}, ##{number}': :raw_scale can only have Range as value" unless raw_scale.class == Range
-
-			pin = AnalogOutputPin.new name, number, @protocol, end_scale, raw_scale
-		else
-			raise "'#{name}, ##{number}': invalid pin type ('#{type}'). Valid types are- [:di, :do, :ai, :ao]"
+			when :di then pin = DigitalInputPin.parse name, number, meta
+			when :do then pin = DigitalOutputPin.parse name, number, meta
+			when :ai then pin = AnalogInputPin.parse name, number, meta
+			when :ao then pin = AnalogOutputPin.parse name, number, meta
+			else raise "'#{name}, ##{number}': invalid pin type ('#{type}'). Valid types are- [:di, :do, :ai, :ao]"
 		end
 
+		pin.board_protocol = @protocol
 		@pins[name] = pin
 		return pin
 	end
