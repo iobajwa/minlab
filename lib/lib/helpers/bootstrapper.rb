@@ -31,13 +31,16 @@ def wire_net name, pins
 	eval "$#{name} = net"
 	eval "def #{name}() $#{name} end"
 end
+def disconnect_all_boards
+	# it makes sense to start disconnecting from the last board that was created. This is a simple way around the :gateway problem. :D
+	Board.all_boards.reverse.each {  |b| b.disconnect  }
+end
 def register_tests(val)  $tests = val end
 
 # useful overrides
 def sandbox() end
 def on_abort()  end
 def wait() forever end
-
 
 
 # load passed files
@@ -64,8 +67,12 @@ begin
 		eval "def #{b.name}() $#{b.name} end"
 		b.connect 
 	}
-rescue RubySerial::Exception, Exception => ex
-	eputs "Wiring error:\n\t#{ex.message}"
+rescue Interrupt => e
+	on_abort
+	disconnect_all_boards
+	abort "\naborted."
+rescue Exception => ex
+	eputs "\n\nWIRING ERROR: #{ex.message}"
 	if verbose
 		eputs "At:\n"
 		ex.backtrace.each {  |b| eputs "\t" + b  }
@@ -73,15 +80,10 @@ rescue RubySerial::Exception, Exception => ex
 	abort
 end
 
-def disconnect_all_boards
-	# it makes sense to start disconnecting from the last board that was created. This is a simple way around the :gateway problem. :D
-	Board.all_boards.reverse.each {  |b| b.disconnect  }
-end
-
 
 # cannot define these aliases before the user files are included coz ruby won't update the aliases to new overrides
-[:on_exit, :when_aborted, :when_aborting, :on_aborting].each         {  |m| (class << self; self; end).send :alias_method, m, :on_abort }
-[:sandboxing, :sandbox_code, :sandboxing_code, :sb ].each {  |m| (class << self; self; end).send :alias_method, m, :sandbox }
+[:on_exit, :when_aborted, :when_aborting, :on_aborting].each {  |m| (class << self; self; end).send :alias_method, m, :on_abort }
+[:sandboxing, :sandbox_code, :sandboxing_code, :sb ].each    {  |m| (class << self; self; end).send :alias_method, m, :sandbox }
 
 
 # invoke sandbox functions if asked to do so
@@ -98,7 +100,7 @@ rescue Interrupt => e
 	disconnect_all_boards
 	abort "\naborted."
 rescue RubySerial::Exception, ProtocolEx, Exception => ex
-	eputs "\n\nSANDBOXING ERROR:\n\t#{ex.message}"
+	eputs "\n\nSANDBOXING ERROR: #{ex.message}"
 	eputs "At:\n" if verbose
 	ex.backtrace.each {  |b| eputs "\t" + b  } if verbose
 	abort
@@ -165,8 +167,9 @@ begin
 		puts "OK" 
 	end
 
-rescue RubySerial::Exception => ex
-	eputs "Tests error:\n\t#{ex.message}"
+rescue RubySerial::Exception, Exception => ex
+	disconnect_all_boards unless ex.class == RubySerial::Exception
+	eputs "\n\nTESTS ERROR:\n\t#{ex.message}"
 	eputs "At:\n" if verbose
 	ex.backtrace.each {  |b| eputs "\t" + b  } if verbose
 	abort
@@ -175,10 +178,4 @@ rescue Interrupt => e
 	disconnect_all_boards
 	eputs "\n\nTESTS ABORTED!"
 	abort "FAIL"
-rescue => ex
-	disconnect_all_boards
-	eputs "Tests error:\n\t#{ex.message}"
-	eputs "At:\n" if verbose
-	ex.backtrace.each {  |b| eputs "\t" + b  } if verbose
-	abort
 end
