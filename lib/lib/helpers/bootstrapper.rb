@@ -14,10 +14,11 @@ $cli_options[:repeat_count] = 1 if $cli_options[:repeat_count] == nil || $cli_op
 verbose = ( $cli_options.include?(:v) || $cli_options.include?(:verbose) ) ? true : false
 
 
-# create public level methods for tests, test_groups, test asserts
-$tests  = []
 $assert = TestAssert.new
-def tests()     $tests       end
+$__tg_register = []
+$__tg_count = 0
+
+# create public level methods for tests, test_groups, test asserts
 def assert()    $assert      end
 def settings()  $cli_options end
 def wire board, pin_name, pin_number, type, meta={}
@@ -35,7 +36,11 @@ def disconnect_all_boards
 	# it makes sense to start disconnecting from the last board that was created. This is a simple way around the :gateway problem. :D
 	Board.all_boards.reverse.each {  |b| b.disconnect  }
 end
-def register_tests(val)  $tests = val end
+def test name, purpose='', setup=nil, teardown=nil, &execution
+	$__tg_register[$__tg_count] = { :name => name, :purpose => purpose, :setup => setup, :teardown => teardown, :execution => execution }
+	$__tg_count += 1
+end
+
 
 # useful overrides
 def sandbox() end
@@ -111,25 +116,38 @@ $SANDBOXING = false
 
 
 # otherwise execute the tests
-abort "No tests defined! Make sure tests were properly added." if $tests == nil || $tests.class != Array || ($tests.length == 0 && verbose)
-exit if tests.length == 0		# sometimes we use minlab just for sandboxing
-$tests.flatten!
+abort "No tests defined! Make sure tests were properly added." if $__tg_count == 0 && verbose
+exit if $__tg_count == 0		# sometimes we use minlab just for sandboxing
+
+
+
+$__test_runner = TestRunner.new
+
+# override test for nested blocks
+def test name, purpose='', setup=nil, teardown=nil, &execution
+	meta = {}
+	meta[:name]      = name
+	meta[:purpose]   = purpose
+	meta[:setup]     = setup
+	meta[:teardown]  = teardown
+	meta[:execution] = execution
+	$__test_runner._execute meta
+end
 
 begin
-	runner = TestRunner.new
-	max_test_name_length = 0
-	runner.test_group_pre_run  = Proc.new {  |g, depth| puts ""; puts "  " * depth + "#{g.name}" }
-	runner.test_pre_run        = Proc.new {  |t, g, depth| 
-		max_length = g ? g.list_max_name_length : t.name.length    # g might not even exist
-		output = "  " * depth
-		output += sprintf "%-#{max_length}.#{max_length}s", t.name
+	$__test_runner.test_group_pre_run = Proc.new {  |name, depth| puts "HERE"; puts ""; puts "  " * depth + "#{name}" }
+	$__test_runner.test_pre_run = Proc.new {
+	|name, depth|
+		output = "\n"
+		output += "  " * depth
+		output += name
 		print output
 	}
-	runner.test_post_run = Proc.new {  |t, report, g, depth|
+	$__test_runner.test_post_run = Proc.new {
+	|name, report, depth|
 		output = ""
 		result = report[:result]
 		case result
-		when :passed then output += " : OK"
 		when :skipped then output += " : NA"
 		when :ignored then output += " : IGNORED"
 		when :error   then output += " : ERROR"
@@ -137,12 +155,13 @@ begin
 		end
 		output += " : #{report[:output]}" unless report[:output].length == 0 || result == :passed
 		output += " : #{sprintf "%3.3f", report[:time]} seconds" if verbose
-		puts output
+		print output
 	}
-	results = runner.execute $tests, $cli_options
+
+	results = $__test_runner.execute $__tg_register
 	
 	# print summary
-	puts "-----------------------"
+	puts "\n-----------------------"
 	total_groups  = results[:stats][:total_groups]
 	total_tests   = results[:stats][:total_tests]
 	total_pass    = results[:stats][:total_pass]
@@ -151,7 +170,7 @@ begin
 	total_errors  = results[:stats][:total_errors]
 	total_skipped = results[:stats][:total_skipped]
 	total_time    = results[:stats][:total_time]
-	summary_statement = "#{total_groups} Groups  #{total_tests} Tests"
+	summary_statement = "#{total_tests} Tests"
 	summary_statement += "  #{total_fail} Failures"   if total_fail > 0
 	summary_statement += "  #{total_errors} Errors"   if total_errors > 0
 	summary_statement += "  #{total_ignored} Ignored" if total_ignored > 0
@@ -159,14 +178,6 @@ begin
 	puts summary_statement
 	puts "#{$assert.assert_count} Asserts  #{sprintf "%3.3f", total_time} seconds"
 	puts ""
-	if total_errors > 0
-		abort "ERROR"
-	elsif total_fail > 0
-		abort "FAIL"
-	else
-		puts "OK" 
-	end
-
 rescue RubySerial::Exception, Exception => ex
 	disconnect_all_boards unless ex.class == RubySerial::Exception
 	eputs "\n\nTESTS ERROR:\n\t#{ex.message}"
@@ -179,3 +190,12 @@ rescue Interrupt => e
 	eputs "\n\nTESTS ABORTED!"
 	abort "FAIL"
 end
+
+if total_errors > 0
+	abort "ERROR"
+elsif total_fail > 0
+	abort "FAIL"
+else
+	puts "OK" 
+end
+
