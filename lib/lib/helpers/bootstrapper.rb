@@ -36,8 +36,12 @@ def disconnect_all_boards
 	# it makes sense to start disconnecting from the last board that was created. This is a simple way around the :gateway problem. :D
 	Board.all_boards.reverse.each {  |b| b.disconnect  }
 end
-def test name, purpose='', setup=nil, teardown=nil, &execution
-	$__tg_register[$__tg_count] = { :name => name, :purpose => purpose, :setup => setup, :teardown => teardown, :execution => execution }
+def test name, purpose='', setup=nil, teardown=nil, &body
+	$__tg_register[$__tg_count] = { :name => name, :purpose => purpose, :setup => setup, :teardown => teardown, :body => body }
+	$__tg_count += 1
+end
+def group name, purpose='', setup=nil, teardown=nil, &body
+	$__tg_register[$__tg_count] = { :name => name, :purpose => purpose, :setup => setup, :teardown => teardown, :body => body }
 	$__tg_count += 1
 end
 
@@ -124,21 +128,31 @@ exit if $__tg_count == 0		# sometimes we use minlab just for sandboxing
 $__test_runner = TestRunner.new
 
 # override test for nested blocks
-def test name, purpose='', setup=nil, teardown=nil, &execution
+def test name, purpose='', setup=nil, teardown=nil, &body
 	meta = {}
 	meta[:name]      = name
 	meta[:purpose]   = purpose
 	meta[:setup]     = setup
 	meta[:teardown]  = teardown
-	meta[:execution] = execution
+	meta[:body]      = body
 	$__test_runner._execute meta
 end
 
+def group name, purpose='', setup=nil, teardown=nil, &body
+	meta = {}
+	meta[:name]      = name
+	meta[:purpose]   = purpose
+	meta[:setup]     = setup
+	meta[:teardown]  = teardown
+	meta[:body]      = body
+	$__test_runner._execute_group meta
+end
+
 begin
-	$__test_runner.test_group_pre_run = Proc.new {  |name, depth| puts "HERE"; puts ""; puts "  " * depth + "#{name}" }
+	$__test_runner.test_group_pre_run = Proc.new {  |name, depth| puts ""; puts "  " * depth + "#{name}" }
 	$__test_runner.test_pre_run = Proc.new {
 	|name, depth|
-		output = "\n"
+		output = ""
 		output += "  " * depth
 		output += name
 		print output
@@ -155,7 +169,7 @@ begin
 		end
 		output += " : #{report[:output]}" unless report[:output].length == 0 || result == :passed
 		output += " : #{sprintf "%3.3f", report[:time]} seconds" if verbose
-		print output
+		puts output
 	}
 
 	results = $__test_runner.execute $__tg_register
