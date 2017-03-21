@@ -16,7 +16,7 @@ verbose = ( $cli_options.include?(:v) || $cli_options.include?(:verbose) ) ? tru
 
 $assert = TestAssert.new
 $__tg_register = []
-$__tg_count = 0
+$__tst_register = []
 
 # create public level methods for tests, test_groups, test asserts
 def assert()    $assert      end
@@ -37,12 +37,10 @@ def disconnect_all_boards
 	Board.all_boards.reverse.each {  |b| b.disconnect  }
 end
 def test name, purpose='', setup=nil, teardown=nil, &body
-	$__tg_register[$__tg_count] = { :name => name, :purpose => purpose, :setup => setup, :teardown => teardown, :body => body }
-	$__tg_count += 1
+	$__tst_register << { :name => name, :purpose => purpose, :setup => setup, :teardown => teardown, :body => body }
 end
 def group name, purpose='', setup=nil, teardown=nil, &body
-	$__tg_register[$__tg_count] = { :name => name, :purpose => purpose, :setup => setup, :teardown => teardown, :body => body }
-	$__tg_count += 1
+	$__tg_register << { :name => name, :purpose => purpose, :setup => setup, :teardown => teardown, :body => body }
 end
 
 
@@ -96,12 +94,12 @@ end
 
 
 # invoke sandbox functions if asked to do so
-found_atleast_one_func = false
+sandboxed = false
 begin
 	$cli_options.each_pair {  |k, v|
 		if self.private_methods.include? k.to_sym            # black magic
 			self.send k.to_sym
-			found_atleast_one_func = true
+			sandboxed = true
 		end
 	}
 rescue Interrupt => e
@@ -114,51 +112,71 @@ rescue RubySerial::Exception, ProtocolEx, Exception => ex
 	ex.backtrace.each {  |b| eputs "\t" + b  } if verbose
 	abort
 end
-exit if found_atleast_one_func
+
+exit if sandboxed
 $assert.silent = false
 $SANDBOXING = false
 
 
+
 # otherwise execute the tests
-abort "No tests defined! Make sure tests were properly added." if $__tg_count == 0 && verbose
-exit if $__tg_count == 0		# sometimes we use minlab just for sandboxing
 
 
-
-$__test_runner = TestRunner.new
-
-# override test for nested blocks
-def test name, purpose='', setup=nil, teardown=nil, &body
-	meta = {}
-	meta[:name]      = name
-	meta[:purpose]   = purpose
-	meta[:setup]     = setup
-	meta[:teardown]  = teardown
-	meta[:body]      = body
-	$__test_runner._execute meta
+# take care of the orphan tests
+if $__tst_register.length > 0
+	i = 0
+	orphan_body = "group 'Remaining' do\n"
+	$__tst_register.each {  |meta|
+		name     = meta[:name]
+		purpose  = meta[:purpose]
+		body     = meta[:body]
+		next unless body
+		eval "$__test_body#{i} = $__tst_register[i][:body]"
+		orphan_body += "\ttest '#{name}', '#{purpose}', $__tst_register[#{i}][:setup], $__tst_register[#{i}][:teardown] do\n\t\t$__test_body#{i}.call if $__test_body#{i}\n\tend\n"
+		i += 1
+	}
+	orphan_body += "end"
+	eval orphan_body
 end
 
-def group name, purpose='', setup=nil, teardown=nil, &body
-	meta = {}
-	meta[:name]      = name
-	meta[:purpose]   = purpose
-	meta[:setup]     = setup
-	meta[:teardown]  = teardown
-	meta[:body]      = body
-	$__test_runner._execute_group meta
-end
+abort "No tests defined! Make sure tests were properly added." if $__tg_register.length == 0 && verbose
+exit if $__tg_register.length == 0		# sometimes we use minlab just for sandboxing
+
 
 begin
-	$__test_runner.test_group_pre_run = Proc.new {  |name, depth| puts ""; puts "  " * depth + "#{name}" }
-	$__test_runner.test_pre_run = Proc.new {
-	|name, depth|
+	$__test_runner = TestRunner.new
+	
+	anonymous_group = $__tg_register.length == 1 && $__tst_register.length > 0
+
+	# override test for nested blocks
+	def test name, purpose='', setup=nil, teardown=nil, &body
+		meta = {}
+		meta[:name]      = name
+		meta[:purpose]   = purpose
+		meta[:setup]     = setup
+		meta[:teardown]  = teardown
+		meta[:body]      = body
+		$__test_runner._execute meta
+	end
+	def group name, purpose='', setup=nil, teardown=nil, &body
+		meta = {}
+		meta[:name]      = name
+		meta[:purpose]   = purpose
+		meta[:setup]     = setup
+		meta[:teardown]  = teardown
+		meta[:body]      = body
+		$__test_runner._execute_group meta
+	end
+
+	$__test_runner.test_group_pre_run = Proc.new {  |name, depth| puts "\n" + "  " * depth + "#{name}" if !anonymous_group }
+	$__test_runner.test_group_post_run = Proc.new { puts unless anonymous_group }
+	$__test_runner.test_pre_run = Proc.new {  |name, depth|
 		output = ""
-		output += "  " * depth
+		output += "  " * depth if !anonymous_group
 		output += name
 		print output
 	}
-	$__test_runner.test_post_run = Proc.new {
-	|name, report, depth|
+	$__test_runner.test_post_run = Proc.new {  |name, report, depth|
 		output = ""
 		result = report[:result]
 		case result
@@ -172,10 +190,13 @@ begin
 		puts output
 	}
 
+	puts if anonymous_group
+
 	results = $__test_runner.execute $__tg_register
 	
 	# print summary
-	puts "\n-----------------------"
+	puts if anonymous_group
+	puts "-----------------------"
 	total_groups  = results[:stats][:total_groups]
 	total_tests   = results[:stats][:total_tests]
 	total_pass    = results[:stats][:total_pass]
