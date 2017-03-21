@@ -57,6 +57,7 @@ class TestRunner
 		finish = Time.now
 
 		@results[:stats] = { 
+			:total_groups  => @group_count,
 			:total_tests   => @test_count,
 			:total_pass    => @total_pass,
 			:total_fail    => @total_fail,
@@ -123,6 +124,7 @@ class TestRunner
 	end
 
 	def _execute_group meta
+		@group_count += 1
 		name          = meta[:name]
 		body          = meta[:body]
 		setup_code    = meta[:setup]
