@@ -79,12 +79,14 @@ rescue Interrupt => e
 	disconnect_all_boards
 	abort "\naborted."
 rescue Exception => ex
-	eputs "\n\nWIRING ERROR: #{ex.message}"
-	if verbose
-		eputs "At:\n"
-		ex.backtrace.each {  |b| eputs "\t" + b  }
+	unless ex.class == SystemExit
+		eputs "\n\nWIRING ERROR: #{ex.message}"
+		if verbose
+			eputs "At:\n"
+			ex.backtrace.each {  |b| eputs "\t" + b  }
+		end
 	end
-	abort
+	exit 1
 end
 
 
