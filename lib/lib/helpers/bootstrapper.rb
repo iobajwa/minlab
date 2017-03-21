@@ -36,11 +36,11 @@ def disconnect_all_boards
 	# it makes sense to start disconnecting from the last board that was created. This is a simple way around the :gateway problem. :D
 	Board.all_boards.reverse.each {  |b| b.disconnect  }
 end
-def test name, purpose='', setup=nil, teardown=nil, &body
-	$__tst_register << { :name => name, :purpose => purpose, :setup => setup, :teardown => teardown, :body => body }
+def test name, purpose='', setup_body=nil, teardown_body=nil, &test_body
+	$__tst_register << { :name => name, :purpose => purpose, :setup => setup_body, :teardown => teardown_body, :body => test_body }
 end
-def group name, purpose='', setup=nil, teardown=nil, &body
-	$__tg_register << { :name => name, :purpose => purpose, :setup => setup, :teardown => teardown, :body => body }
+def group name, purpose='', setup_body=nil, teardown_body=nil, &test_body
+	$__tg_register << { :name => name, :purpose => purpose, :setup => setup_body, :teardown => teardown_body, :body => test_body }
 end
 
 
@@ -149,26 +149,37 @@ begin
 	anonymous_group = $__tg_register.length == 1 && $__tst_register.length > 0
 
 	# override test for nested blocks
-	def test name, purpose='', setup=nil, teardown=nil, &body
+	def test name, purpose='', setup_body=nil, teardown_body=nil, &body
 		meta = {}
 		meta[:name]      = name
 		meta[:purpose]   = purpose
-		meta[:setup]     = setup
-		meta[:teardown]  = teardown
+		meta[:setup]     = setup_body
+		meta[:teardown]  = teardown_body
 		meta[:body]      = body
-		$__test_runner._execute meta
+		$__test_runner._execute_test meta
 	end
-	def group name, purpose='', setup=nil, teardown=nil, &body
+	def group name, purpose='', setup_body=nil, teardown_body=nil, &body
 		meta = {}
 		meta[:name]      = name
 		meta[:purpose]   = purpose
-		meta[:setup]     = setup
-		meta[:teardown]  = teardown
+		meta[:setup]     = setup_body
+		meta[:teardown]  = teardown_body
 		meta[:body]      = body
 		$__test_runner._execute_group meta
 	end
+	# def setup &body
+	# 	return unless body
+	# 	job = $__test_runner.get_active_job_in_pipeline
+	# 	raise "setup/teardown functions can only be used nested inside of a test block." if job == nil || job[:type] == :group
+	# 	$__test_runner.register_setup job[:meta][:body], body
+	# end
+	def teardown &body
+		job = $__test_runner.get_active_job_in_pipeline
+		raise "teardown can only be used nested inside of a test block." if job == nil || job[:type] != :test
+		$__test_runner.hook_teardown job[:name], :test, job[:meta][:body], body
+	end
 
-	$__test_runner.test_group_pre_run = Proc.new {  |name, depth| puts "\n" + "  " * depth + "#{name}" if !anonymous_group }
+	$__test_runner.test_group_pre_run  = Proc.new {  |name, depth| puts "\n" + "  " * depth + "#{name}" if !anonymous_group }
 	$__test_runner.test_group_post_run = Proc.new { puts unless anonymous_group }
 	$__test_runner.test_pre_run = Proc.new {  |name, depth|
 		output = ""

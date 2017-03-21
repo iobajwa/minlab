@@ -8,10 +8,35 @@ class TestRunner
 	@group_count; @test_count; @total_pass; @total_fail; @total_ignored; @total_errors; @total_skipped; 
 	@results; @depth;
 
-	@setup_code; @teardown_code;
+	@teardown_hook_table;
+
+	@execution_pipeline
 
 	def initialize
 		@depth = 0
+		@execution_pipeline = []
+	end
+
+	def get_active_job_in_pipeline
+		return @execution_pipeline.last
+	end
+
+	def pipeline
+		return @execution_pipeline
+	end
+
+	def hook_teardown name, type, caller_body, teardown_body
+		@teardown_hook_table.push( { :name => name, :type => type, :caller => caller_body, :code => teardown_body } )
+	end
+
+	def get_teardown_code name, type, caller_body
+		top_hook = @teardown_hook_table.sample
+		return nil unless top_hook
+		return nil unless top_hook[:name] == name
+		return nil unless top_hook[:type] == type
+		return nil unless top_hook[:caller] == caller_body
+		
+		return @teardown_hook_table.pop[:code]
 	end
 
 	def execute(jobs)
@@ -24,12 +49,11 @@ class TestRunner
 		@total_ignored = 0
 		@total_errors  = 0
 		@total_skipped = 0
-		@single_group  = jobs.length == 1
+		@execution_pipeline  = []
+		@teardown_hook_table = []
 
 		start = Time.now
-			jobs.each {  |meta|
-				_execute_group meta
-			}
+			jobs.each {  |meta|  _execute_group meta  }
 		finish = Time.now
 
 		@results[:stats] = { 
@@ -45,36 +69,41 @@ class TestRunner
 		return @results
 	end
 
-	def setup &body
-		@setup_code = body
-	end
-
-	def teardown &body
-		@teardown_code = body
-	end
-
 	def _run_test meta
+		name = meta[:name]
+		@execution_pipeline.push( { :type => :test, :name => name, :meta => meta } )
 		
+		status  = nil; 
+		message = '';
+
 		begin
 			@test_count += 1
 			meta_setup    = meta[:setup]
 			meta_teardown = meta[:teardown]
 			body          = meta[:body]
 
-			@setup_code.call    if @setup_code
 			meta_setup.call     if meta_setup
 			if body
 				body.call
 			else
 				raise TestIgnoreEx.new, "<no test body provided>"
 			end
-			meta_teardown.call  if meta_teardown
-			@teardown_code.call if @teardown_code
+			teardown_hook = get_teardown_code name, :test, body
+			teardown_hook.call if teardown_hook
+			meta_teardown.call if meta_teardown
+
+			@total_pass += 1
+			status  = :passed
+			message = "ok"
 
 		rescue TestSkipEx, TestIgnoreEx, TestFailureEx, ProtocolEx, Exception => ex
-			begin 
-				@teardown_code.call if @teardown_code
-				meta_teardown.call  if teardown
+			begin
+				teardown_hook = get_teardown_code name, :test, body
+				teardown_hook.call if teardown_hook
+			rescue
+			end
+			begin
+				meta_teardown.call if meta_teardown
 			rescue
 			end
 			status = 
@@ -82,41 +111,47 @@ class TestRunner
 				when TestSkipEx    then @total_skipped += 1; :skipped
 				when TestIgnoreEx  then @total_ignored += 1; :ignored
 				when TestFailureEx then @total_fail    += 1; :failed
-				else @total_errors += 1; :error
+				else @total_errors += 1; :error; raise ex
 			end
 
-			return status, ex.message
+			message = ex.message
 		end
 
-		@total_pass += 1
-		return :passed, "ok"
+		@execution_pipeline.pop
+
+		return status, message
 	end
 
 	def _execute_group meta
-		name     = meta[:name]
-		purpose  = meta[:purpose]
-		setup    = meta[:setup]
-		teardown = meta[:teardown]
-		body     = meta[:body]
+		name          = meta[:name]
+		body          = meta[:body]
+		setup_code    = meta[:setup]
+		teardown_code = meta[:teardown]
+		@execution_pipeline.push( { :type => :group, :name => name, :meta => meta } )
+
 		@test_group_pre_run.call name, @depth if @test_group_pre_run
 
 		@depth += 1
-		body.call if body
+			setup_code.call    if setup_code
+			body.call          if body
+			teardown_code.call if teardown_code
 		@depth -= 1
 
 		@test_group_post_run.call name, @depth if @test_group_post_run
+
+		@execution_pipeline.pop
 	end
 
-	def _execute meta
+	def _execute_test meta
+		name = meta[:name]
 
-		test_name = meta[:name]
-		@test_pre_run.call test_name, @depth if @test_pre_run
+		@test_pre_run.call name, @depth if @test_pre_run
 
 			start_time = Time.now
 			result, output = _run_test meta
 			report = { :result => result, :output => output, :time => Time.now - start_time }
 
-		@test_post_run.call test_name, report, @depth if @test_post_run
-
+		@test_post_run.call name, report, @depth if @test_post_run
+	
 	end
 end
