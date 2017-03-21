@@ -16,7 +16,7 @@ pcb     = Board.new 'pcb',     UProtoProtocol, { :gateway => arduino, :port => 1
 # mention connections- what is connected where
 
 #    board     pin_name                 pin_number, pin_type, meta    
-wire arduino, 'mock_temperature_signal', 3,         :ao,      { :raw_scale => 0..255, :end_scale => 0..100 }
+wire arduino, 'mock_temperature_signal', 3,         :ao,      { :raw => 0..255, :scale => 0..100 }
 wire arduino, 'fan_probe',               34,        :di,      :active_low
 wire arduino, 'temperature_alarm_probe', 35,        :di
 
@@ -76,6 +76,8 @@ OK
 
 ```
 
+Providing file name ('my_tests.rb') is optional provided it is the only file in the current working directory.
+
 Furthermore, tests can be nested inside groups and have explicit teardowns
 
 ```
@@ -103,3 +105,30 @@ group "Fan tests" do
 	# group teardown code goes here
 end
 ```
+
+
+### Sandboxing ###
+
+*minlab* provides handy command line interface for invoking functions declared in test files:
+
+```
+#!ruby
+# after declaring boards and wiring information
+
+def signal_low_temperature
+	mock_temperature_signal << 50
+end
+```
+
+which can be invoked from the command line:
+
+
+```
+#!bash
+minlab --signal_low_temperature
+
+```
+
+This is not only automation friendly but also aides as a tool while developing firmware by easing to provide stimuli signals.
+
+Also, the scripts can avoid tests all together and contain only code. This will cause only the code to execute.
