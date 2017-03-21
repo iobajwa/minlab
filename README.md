@@ -4,7 +4,7 @@ A PCB unit-testing framework. The firmware runs on an Arduino Mega and acts as a
 
 ### Quick overview ###
 
-Simply create a new test file which describes the tests to perform and execute those with minlab.
+Simply create a .rb file which contains the board, wiring and tests and run it using minlab.
 ```
 #!ruby
 
@@ -21,43 +21,34 @@ wire arduino, 'fan_probe',               34,        :di,      :active_low
 wire arduino, 'temperature_alarm_probe', 35,        :di
 
 
-# write tests
-fan_tests = []
-fan_tests << Test.new( "Fan Test - Low Temperature", "checks if fan is switched off when temperature is below the threshold value", 
-					Proc.new {    # execution
-						# setup
-						mock_temperature_signal << 50
+# tests
+test "Fan Test - Low Temperature", "checks if fan is switched off when temperature is below the threshold value" do
+	# setup
+	mock_temperature_signal << 50
 
-						# assert
-						fan_probe.is_off?
-						temperature_alarm_probe.is_reset?
-					})
+	# assert
+	fan_probe.is_off?
+	temperature_alarm_probe.is_reset?
+end
 
-fan_tests << Test.new( "Fan Test - Medium Temperature", "checks if fan is switched on when it's hot enough", 
-					Proc.new {    # execution
-						# setup
-						mock_temperature_signal << 65
+test "Fan Test - Medium Temperature", "checks if fan is switched on when it's hot enough" do
+	# setup
+	mock_temperature_signal << 65
 
-						# assert
-						fan_probe.is_on?
-						temperature_alarm_probe.is_reset?
-					})
+	# assert
+	fan_probe.is_on?
+	temperature_alarm_probe.is_reset?
+end
 
-fan_tests << Test.new( "Fan Test - High Temperature", "checks if fan is switched on when it's very hot and the temperature alarm is also fired", 
-					Proc.new {    # execution
-						# setup
-						mock_temperature_signal << 80
-						delay 2.seconds
+test "Fan Test - High Temperature", "checks if fan is switched on when it's very hot and the temperature alarm is also fired" do
+	# setup
+	mock_temperature_signal << 80
+	delay 2.seconds
 
-						# assert
-						fan_probe.is_on?
-						temperature_alarm_probe.is_set?
-					})
-
-
-# register the tests with the test runner
-register_tests fan_tests
-
+	# assert
+	fan_probe.is_on?
+	temperature_alarm_probe.is_set?
+end
 
 ```
 
@@ -74,13 +65,41 @@ This will run the tests and produce the following output:
 
 ```
 #!terminal
-Fan Test - Low Temperature    : OK
-Fan Test - Medium Temperature : OK
-Fan Test - High Temperature   : OK
+Fan Test - Low Temperature
+Fan Test - Medium Temperature
+Fan Test - High Temperature
 
 -----------------------
 0 Groups  3 tests
 6 Asserts  2.874 Seconds
 OK
 
+```
+
+Furthermore, tests can be nested inside groups and have explicit teardowns
+
+```
+#!ruby
+
+group "Fan tests" do
+	# group setup code goes here
+
+	test "Low Temperature" do
+		teardown do
+			# the code in this block will be called regardless of the test outcome
+		end
+
+		# ...
+	end
+
+	test "Medium Temperature" do
+		# ...
+	end
+
+	test "High Temperature" do
+		# ...
+	end
+
+	# group teardown code goes here
+end
 ```
