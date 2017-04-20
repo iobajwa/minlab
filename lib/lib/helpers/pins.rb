@@ -377,8 +377,15 @@ class AnalogOutputPin < AnalogPin
 	end
 
 	def write(value)
-		raw_value = Scale.convert value, @end_scale, @raw_scale
-		super raw_value
+		unless @end_scale == nil || @raw_scale == nil
+			if @end_scale.class == Fixnum || @end_scale.class == Float
+				result = value * @end_scale 
+				value  = @end_scale.class == Float ? result.round : result
+			else
+				value = Scale.convert value, @end_scale, @raw_scale
+			end
+		end
+		super value
 	end
 	[:<<, :latch].each {  |a| alias_method a, :write }
 
