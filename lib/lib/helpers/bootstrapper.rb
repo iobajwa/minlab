@@ -11,7 +11,9 @@ $cli_options, $cli_files = OptionMaker.parse ARGV
 
 # make sure settings make sense
 $cli_options[:repeat_count] = 1 if $cli_options[:repeat_count] == nil || $cli_options[:repeat_count] == 0
-verbose = ( $cli_options.include?(:v) || $cli_options.include?(:verbose) ) ? true : false
+$verbose = ( $cli_options.include?(:v) || $cli_options.include?(:verbose) ) ? true : false
+$silent = ( $cli_options.include?(:s) || $cli_options.include?(:silent) ) ? true : false
+$verbose = false if $silent
 
 
 $assert = TestAssert.new
@@ -32,6 +34,8 @@ def wire_net name, pins
 	eval "$#{name} = net"
 	eval "def #{name}() $#{name} end"
 end
+def verbose?() $verbose end
+def silent?()  $silent  end
 def disconnect_all_boards
 	# it makes sense to start disconnecting from the last board that was created. This is a simple way around the :gateway problem. :D
 	Board.all_boards.reverse.each {  |b| b.disconnect  }
@@ -85,7 +89,7 @@ rescue Interrupt => e
 rescue Exception => ex
 	unless ex.class == SystemExit
 		eputs "\n\nWIRING ERROR: #{ex.message}"
-		if verbose
+		if $verbose
 			eputs "At:\n"
 			ex.backtrace.each {  |b| eputs "\t" + b  }
 		end
@@ -121,8 +125,8 @@ rescue RubySerial::Exception, ProtocolEx, Exception => ex
 	rescue Exception => e
 	end
 	eputs "\n\nSANDBOXING ERROR: #{ex.message}"
-	eputs "At:\n" if verbose
-	ex.backtrace.each {  |b| eputs "\t" + b  } if verbose
+	eputs "At:\n" if $verbose
+	ex.backtrace.each {  |b| eputs "\t" + b  } if $verbose
 	abort
 end
 
@@ -152,7 +156,7 @@ if $__tst_register.length > 0
 	eval orphan_body
 end
 
-abort "No tests defined! Make sure tests were properly added." if $__tg_register.length == 0 && verbose
+abort "No tests defined! Make sure tests were properly added." if $__tg_register.length == 0 && $verbose
 exit if $__tg_register.length == 0		# sometimes we use minlab just for sandboxing
 
 
@@ -202,33 +206,84 @@ begin
 		$__test_runner.hook_teardown job[:name], :test, job[:meta][:body], body
 	end
 
-	$__test_runner.test_group_pre_run  = Proc.new {  |name, depth| puts "\n" + "  " * depth + "#{name}" if !anonymous_group }
-	$__test_runner.test_group_post_run = Proc.new { puts unless anonymous_group }
-	$__test_runner.test_pre_run = Proc.new {  |name, depth|
-		output = ""
-		output += "  " * depth if !anonymous_group
-		output += name
-		print output
-	}
-	$__test_runner.test_post_run = Proc.new {  |name, report, depth|
-		output = ""
-		result = report[:result]
-		case result
-		when :skipped then output += " : NA"
-		when :ignored then output += " : IGNORED"
-		when :error   then output += " : ERROR"
-		when :failed  then output += " : FAIL"
-		end
-		output += " : #{report[:output]}" unless report[:output].length == 0 || result == :passed
-		output += " : #{sprintf "%3.3f", report[:time]} seconds" if verbose
-		puts output
-	}
+	if $silent
+		test_complete_namespace = []
+		test_failure_reports = []
+		$__test_runner.test_group_pre_run = Proc.new {  |name, depth| 
+			test_complete_namespace = [] if depth == 0
+			test_complete_namespace.push name
+		}
+		$__test_runner.test_group_post_run = Proc.new { test_complete_namespace.pop }
+		$__test_runner.test_pre_run = Proc.new {  |name, depth| test_complete_namespace.push name }
+		$__test_runner.test_post_run = Proc.new {  |name, report, depth| 
+			result = report[:result]
+			if result == :failed || result == :error
+				output = ""
+				test_complete_namespace.each {  |n| output += "#{n}." }
+				output.chomp! '.'
+				output += " : #{result.to_s.upcase}"
+				test_output = report[:output]
+				output += " : #{test_output}" unless output.length == 0
+				test_failure_reports.push output
+			end
+			test_complete_namespace.pop
+		}
+	else
+		$__test_runner.test_group_pre_run  = Proc.new {  |name, depth| puts "\n" + "  " * depth + "#{name}" if !anonymous_group }
+		$__test_runner.test_group_post_run = Proc.new { puts unless anonymous_group }
+		$__test_runner.test_pre_run = Proc.new {  |name, depth|
+			output = ""
+			output += "  " * depth if !anonymous_group
+			output += name
+			print output
+		}
+		$__test_runner.test_post_run = Proc.new {  |name, report, depth|
+			output = ""
+			result = report[:result]
+			case result
+			when :skipped then output += " : NA"
+			when :ignored then output += " : IGNORED"
+			when :error   then output += " : ERROR"
+			when :failed  then output += " : FAIL"
+			end
+			output += " : #{report[:output]}" unless report[:output].length == 0 || result == :passed
+			output += " : #{sprintf "%3.3f", report[:time]} seconds" if $verbose
+			puts output
+		}
 
-	puts if anonymous_group
+		puts if anonymous_group
+	end
+
 
 	results = $__test_runner.execute $__tg_register
-	
-	# print summary
+
+rescue RubySerial::Exception, Exception => ex
+	disconnect_all_boards unless ex.class == RubySerial::Exception
+	begin
+		on_error unless ex.class == RubySerial::Exception
+	rescue Exception => e
+	end
+	eputs "\n\nTESTS ERROR:\n\t#{ex.message}"
+	eputs "At:\n" if $verbose
+	ex.backtrace.each {  |b| eputs "\t" + b  } if $verbose
+	abort
+rescue Interrupt => e
+	begin
+		on_abort
+	rescue Exception => _e
+	end
+	disconnect_all_boards
+	eputs "\n\nTESTS ABORTED!"
+	abort "FAIL"
+end
+
+
+
+# print summary
+if $silent
+	test_failure_reports.each {  |r| eputs r }
+	abort "FAIL" if test_failure_reports.length > 0
+else
 	puts if anonymous_group
 	puts "-----------------------"
 	total_groups  = results[:stats][:total_groups]
@@ -247,31 +302,12 @@ begin
 	puts summary_statement
 	puts "#{$assert.assert_count} Asserts  #{sprintf "%3.3f", total_time} seconds"
 	puts ""
-rescue RubySerial::Exception, Exception => ex
-	disconnect_all_boards unless ex.class == RubySerial::Exception
-	begin
-		on_error unless ex.class == RubySerial::Exception
-	rescue Exception => e
-	end
-	eputs "\n\nTESTS ERROR:\n\t#{ex.message}"
-	eputs "At:\n" if verbose
-	ex.backtrace.each {  |b| eputs "\t" + b  } if verbose
-	abort
-rescue Interrupt => e
-	begin
-		on_abort
-	rescue Exception => _e
-	end
-	disconnect_all_boards
-	eputs "\n\nTESTS ABORTED!"
-	abort "FAIL"
-end
 
-if total_errors > 0
-	abort "ERROR"
-elsif total_fail > 0
-	abort "FAIL"
-else
-	puts "OK" 
+	if total_errors > 0
+		abort "ERROR"
+	elsif total_fail > 0
+		abort "FAIL"
+	else
+		puts "OK" 
+	end
 end
-
