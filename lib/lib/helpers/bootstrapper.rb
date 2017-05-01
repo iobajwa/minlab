@@ -282,6 +282,7 @@ end
 # print summary
 if $silent
 	test_failure_reports.each {  |r| eputs r }
+	abort "NO TESTS RUN" if results[:stats][:total_tests] == 0
 	abort "FAIL" if test_failure_reports.length > 0
 else
 	puts if anonymous_group
