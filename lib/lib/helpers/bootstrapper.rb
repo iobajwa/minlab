@@ -46,7 +46,8 @@ end
 
 # useful overrides
 def sandbox() end
-def on_abort()  end
+def on_abort() end
+def on_error() end
 def wait() forever end
 
 
@@ -75,7 +76,10 @@ begin
 		b.connect 
 	}
 rescue Interrupt => e
-	on_abort
+	begin
+		on_abort
+	rescue Exception => _e
+	end
 	disconnect_all_boards
 	abort "\naborted."
 rescue Exception => ex
@@ -105,10 +109,17 @@ begin
 		end
 	}
 rescue Interrupt => e
-	on_abort
+	begin
+		on_abort
+	rescue Exception => _e
+	end
 	disconnect_all_boards
 	abort "\naborted."
 rescue RubySerial::Exception, ProtocolEx, Exception => ex
+	begin
+		on_error unless ex.class == RubySerial::Exception
+	rescue Exception => e
+	end
 	eputs "\n\nSANDBOXING ERROR: #{ex.message}"
 	eputs "At:\n" if verbose
 	ex.backtrace.each {  |b| eputs "\t" + b  } if verbose
@@ -124,10 +135,10 @@ $SANDBOXING = false
 # otherwise execute the tests
 
 
-# take care of the orphan tests
+# take ownsership of the orphan tests
 if $__tst_register.length > 0
 	i = 0
-	orphan_body = "group 'Remaining' do\n"
+	orphan_body = "group 'Others' do\n"
 	$__tst_register.each {  |meta|
 		name     = meta[:name]
 		purpose  = meta[:purpose]
@@ -145,8 +156,18 @@ abort "No tests defined! Make sure tests were properly added." if $__tg_register
 exit if $__tg_register.length == 0		# sometimes we use minlab just for sandboxing
 
 
+# check out if we are filtering tests
+run_only = $cli_options[:only]
+run_only_filter_namespaces = []
+if run_only
+	run_only = [run_only] if run_only.class != Array
+	run_only.each {  |n| run_only_filter_namespaces << n.split('.').map(&:strip) }
+end
+
+
+# finally begine execution
 begin
-	$__test_runner = TestRunner.new
+	$__test_runner = TestRunner.new run_only_filter_namespaces
 	
 	anonymous_group = $__tg_register.length == 1 && $__tst_register.length > 0
 
@@ -228,12 +249,19 @@ begin
 	puts ""
 rescue RubySerial::Exception, Exception => ex
 	disconnect_all_boards unless ex.class == RubySerial::Exception
+	begin
+		on_error unless ex.class == RubySerial::Exception
+	rescue Exception => e
+	end
 	eputs "\n\nTESTS ERROR:\n\t#{ex.message}"
 	eputs "At:\n" if verbose
 	ex.backtrace.each {  |b| eputs "\t" + b  } if verbose
 	abort
 rescue Interrupt => e
-	on_abort
+	begin
+		on_abort
+	rescue Exception => _e
+	end
 	disconnect_all_boards
 	eputs "\n\nTESTS ABORTED!"
 	abort "FAIL"

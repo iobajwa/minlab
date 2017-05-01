@@ -12,9 +12,12 @@ class TestRunner
 
 	@execution_pipeline
 
-	def initialize
+	@filter_only
+
+	def initialize filter_only=[]
 		@depth = 0
 		@execution_pipeline = []
+		@filter_only = filter_only == nil ? [] : filter_only
 	end
 
 	def get_active_job_in_pipeline
@@ -23,6 +26,26 @@ class TestRunner
 
 	def pipeline
 		return @execution_pipeline
+	end
+
+	def job_passes_only_filter title=nil
+		return true if @filter_only.length < 1
+
+		@filter_only.each {  |n|
+			i = 0
+			matched = true
+			@execution_pipeline.each {  |e|
+				e = e[:name].downcase
+				return true if i > n.length - 1 && n.length > 0
+				if n[i].downcase != e
+					matched = false
+					break
+				end
+				i += 1
+			}
+			return true if matched
+		}
+		return false
 	end
 
 	def hook_teardown name, type, caller_body, teardown_body
@@ -39,7 +62,7 @@ class TestRunner
 		return @teardown_hook_table.pop[:code]
 	end
 
-	def execute(jobs)
+	def execute jobs
 		@results = { :reports => {}, :stats => {} }
 		@depth         = 0
 		@group_count   = 0
@@ -78,12 +101,14 @@ class TestRunner
 		message = '';
 
 		begin
+			raise TestIgnoreEx.new '' unless job_passes_only_filter name
+		
 			@test_count += 1
 			meta_setup    = meta[:setup]
 			meta_teardown = meta[:teardown]
 			body          = meta[:body]
 
-			meta_setup.call     if meta_setup
+			meta_setup.call if meta_setup
 			if body
 				body.call
 			else
@@ -124,16 +149,23 @@ class TestRunner
 	end
 
 	def _execute_group meta
-		@group_count += 1
 		name          = meta[:name]
 		body          = meta[:body]
 		setup_code    = meta[:setup]
 		teardown_code = meta[:teardown]
 		@execution_pipeline.push( { :type => :group, :name => name, :meta => meta } )
 
+		@depth += 1
+
+		unless job_passes_only_filter name
+			@execution_pipeline.pop
+			@depth -= 1
+			return
+		end
+
+		@group_count += 1
 		@test_group_pre_run.call name, @depth if @test_group_pre_run
 
-		@depth += 1
 			setup_code.call    if setup_code
 			body.call          if body
 			teardown_code.call if teardown_code
