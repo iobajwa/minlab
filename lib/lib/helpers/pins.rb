@@ -254,6 +254,7 @@ class AnalogInputPin < AnalogPin
 	end
 
 	def is_almost? reference, tolerance=10.0
+		tolerance = Float(tolerance)
 		read_value = read()
 		delta = ((@end_scale.last - @end_scale.first) * tolerance) / 100
 		return (reference-delta..reference+delta).include? read_value
@@ -322,6 +323,7 @@ class AnalogInputPin < AnalogPin
 
 	# returns true if the current value on the pin is almost 0 (0 +- 1% full scale error)
 	def is_almost_zero?(tolerance=10.0)
+		tolerance = Float(tolerance)
 		read_value = read()
 		percent_of_full_scale = Scale.convert_percent read_value, @end_scale
 		
@@ -345,6 +347,7 @@ class AnalogInputPin < AnalogPin
 
 	# tests if the current value on the pin is almost full (full scale +- 1% error)
 	def is_almost_full? tolerance=90.0
+		tolerance = Float(tolerance)
 		read_value = read()
 		percent_of_full_scale = Scale.convert_percent read_value, @end_scale
 		

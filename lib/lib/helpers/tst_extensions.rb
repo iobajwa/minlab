@@ -119,6 +119,7 @@ class AnalogInputPin
 
 	# tests if the current value on the pin is almost 0 (0 +- 1% full scale error)
 	def is_almost_zero? tolerance=10.0
+		tolerance = Float(tolerance)
 		read_value = read()
 		percent_of_full_scale = Scale.convert_percent read_value, @end_scale
 		
@@ -142,6 +143,7 @@ class AnalogInputPin
 
 	# tests if the current value on the pin is almost full (full scale +- 1% error)
 	def is_almost_full? tolerance=90.0
+		tolerance = Float(tolerance)
 		read_value = read()
 		percent_of_full_scale = Scale.convert_percent read_value, @end_scale
 		
@@ -154,15 +156,16 @@ class AnalogInputPin
 
 
 	def is_almost? reference, tolerance=10.0
+		tolerance = Float(tolerance)
 		read_value = read()
 		delta = ((@end_scale.last - @end_scale.first) * tolerance) / 100
-		start = reference-delta
+		start = reference - delta
 		start = 0 if start < 0
 		range = (start..reference+delta)
 
 		$assert.value_lies_within @name, read_value, range
 	end
-	[ :should_be_almost_equal_to, :must_be_almost_equal_to, :should_almost_equals, :must_almost_equals,
+	[ :should_be_almost_equal_to, :must_be_almost_equal_to, :should_almost_equals, :should_be_almost_equals, :must_almost_equals, :must_be_almost_equals,
 	  :should_be_almost_equals_to, :must_be_almost_equals_to ].each {  |a| alias_method a, :is_almost? }
 
 end
