@@ -79,7 +79,7 @@ describe OptionMaker do
 			options.should be == { :flag => nil }
 		end
 		it "multiple flags are passed" do
-			options, files = OptionMaker.parse ["--flag1", "-- flag2", "  -- flag3  "]
+			options, files = OptionMaker.parse ["--flag1", "-- flag2", "  -- flag3  ", "  "]
 			files.should be_empty
 			options.should be == { :flag1 => nil, :flag2 => nil, :flag3 => nil }
 		end

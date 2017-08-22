@@ -35,6 +35,7 @@ class OptionMaker
 			filelist << arg
 			end
 		}
+		filelist.reject!(&:empty?)
 		return options, filelist
 	end
 
