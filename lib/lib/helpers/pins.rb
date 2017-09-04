@@ -9,16 +9,16 @@ class Pin
 	attr_accessor :board_protocol
 
 	def initialize(name, number, type, permissions, board_protocol=nil)
-		@name        = name
-		@number      = number
-		@type        = type
-		@permissions = permissions.class == String ? permissions : permissions.to_s
+		@name           = name
+		@number         = number
+		@type           = type
+		@permissions    = permissions.class == String ? permissions : permissions.to_s
 		@board_protocol = board_protocol
 	end
 
-	def read
+	def read meta={}
 		assert_read_access
-		return @board_protocol.read_pin @number, @type
+		return @board_protocol.read_pin @number, @type, meta
 	end
 	
 	def write(value)
@@ -180,21 +180,29 @@ class DigitalInputPin < DigitalPin
 end
 
 class AnalogPin < Pin
-	attr_accessor :raw_scale, :end_scale
+	attr_accessor :raw_scale, :end_scale, :reference
 	
-	def initialize(name, number, type, permissions, coms=nil, end_scale=0..1023, raw_scale=0..1023)
+	def initialize(name, number, type, permissions, coms=nil, end_scale=0..1023, raw_scale=0..1023, reference="default")
 		super(name, number, type, permissions, coms)
 		@end_scale = end_scale
 		@raw_scale = raw_scale
+		@reference = reference == nil ? "default" : reference
 	end
 
 	def AnalogPin.parse_meta name, number, meta={}
 		meta = { meta => nil } if meta.class != Hash
+		
 		# get aliases
 		meta[:raw_scale] = meta[:raw]   unless meta[:raw_scale]
 		meta[:end_scale] = meta[:scale] unless meta[:end_scale]
 		meta[:end_scale] = meta[:end]   unless meta[:end_scale]
+		meta[:reference] = meta[:ref]   unless meta[:reference]
 
+		# figure out reference
+		reference = meta[:reference]
+		reference = "default" unless reference
+
+		# figure out the scales
 		raw_scale = meta[:raw_scale]
 		end_scale = meta[:end_scale]
 
@@ -207,7 +215,7 @@ class AnalogPin < Pin
 				# convert end_scale to a range
 				end_first = raw_scale.first * end_scale
 				end_first = end_first.round if end_first.class == Float
-				end_last  = raw_scale.last * end_scale
+				end_last = raw_scale.last * end_scale
 				end_last = end_last.round if end_last.class == Float
 
 				end_scale = (end_first..end_last)
@@ -230,18 +238,18 @@ class AnalogPin < Pin
 			raise "Pin '#{name}' ('#{number}'): end_scale can only be a Fixnum, Float or Range ('#{end_scale.class}')"
 		end
 
-		return raw_scale, end_scale
+		return raw_scale, end_scale, reference
 	end
 end
 
 class AnalogInputPin < AnalogPin
 
-	def initialize(name, number, coms=nil, end_scale=0..1023, raw_scale=0..1023)
-		super(name, number, :ai, "r", coms, end_scale, raw_scale)
+	def initialize(name, number, coms=nil, end_scale=0..1023, raw_scale=0..1023, reference="default")
+		super(name, number, :ai, "r", coms, end_scale, raw_scale, reference)
 	end
 
 	def read
-		raw_value = super()
+		raw_value = super(:reference => @reference)
 		
 		return raw_value if @end_scale == nil && @raw_scale == nil
 
@@ -368,7 +376,7 @@ class AnalogInputPin < AnalogPin
 
 
 	def AnalogInputPin.parse name, number, meta={}
-		raw_scale, end_scale = AnalogPin.parse_meta name, number, meta
+		raw_scale, end_scale, reference = AnalogPin.parse_meta name, number, meta
 		return AnalogInputPin.new name, number, nil, end_scale, raw_scale
 	end
 end

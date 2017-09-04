@@ -15,6 +15,7 @@ u8 response_error_param;
 #define MAX_BAUDRATE_INDEX    11
 const u32 supported_baudrates[]   = { 300, 600, 1200, 2400, 4800, 9600, 14400, 19200, 28800, 38400, 57600, 115200 };
 
+u8 last_analog_reference;
 HardwareSerial *com_ports[4] = { 0, 0, 0, 0 };
 
 
@@ -27,6 +28,7 @@ void setup() {
   com_ports[1] = &Serial1;
   com_ports[2] = &Serial2;
   com_ports[3] = &Serial3;
+  last_analog_reference = 0;
 }
 
 void loop() {
@@ -215,12 +217,18 @@ bool service_read_analog_input (Char *buffer, u16 length, Char *out_buffer, u16 
 
   if ( check_ai_pin_number ( pin_number ) ) 
   {
-    u8 ref_codes[] = { DEFAULT, INTERNAL1V1, INTERNAL2V56, EXTERNAL };
+    u8 ref_codes[] = { DEFAULT, INTERNAL1V1, INTERNAL2V56, EXTERNAL }, new_ref;
     u16 result;
 
     pinMode         ( pin_number, INPUT );
     analogReference ( ref_codes[ref] );
     result = analogRead ( pin_number );
+    if ( ref != last_analog_reference )
+    {
+      delay(20);              // allow the readings to stabalize because we just changed analogReference
+      result = analogRead ( pin_number );
+      last_analog_reference = ref;
+    }
     out_buffer[0] = pin_number;
     out_buffer[1] = ref;
     out_buffer[2] = (u8)(result & 0xFF);

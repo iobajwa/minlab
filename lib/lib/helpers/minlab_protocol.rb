@@ -43,7 +43,25 @@ class MinlabProtocol < Protocol
     }
 
 	@@supported_pin_types = [:di, :do, :ai, :ao]
-	@@ai_references       = { "default" => 0, "internal_1.1v" => 1, "internal_2.56v" => 2, "external" => 3 }
+	@@ai_references       = {
+							  "default" => 0,
+							  "5v"      => 0,
+							  "5"       => 0,
+							  "internal_1.1v" => 1,
+							  "1.1v"          => 1,
+							  "1.1"           => 1,
+							  "1v"            => 1,
+							  "1v1"           => 1,
+							  "1"             => 1,
+							  "internal_2.56v" => 2,
+							  "2.56v"          => 2,
+							  "2.56"           => 2,
+							  "2.5"            => 2,
+							  "2"              => 2,
+							  "2v"             => 2,
+							  "2.5v"           => 2,
+							  "external" => 3,
+							}
 	@@comport_baudrates = { 300    => 0,
 							600    => 1,
 							1200   => 2,
@@ -100,7 +118,7 @@ class MinlabProtocol < Protocol
 		return SerialGatewayComs.new self, port_number, baudrate
 	end
 
-	def read_pin number, type, metadata={}
+	def read_pin number, type, meta={}
 		check_pin_number number
 		check_type type
 
@@ -109,14 +127,15 @@ class MinlabProtocol < Protocol
 			response = send_command READ_DI_COMMAND, number
 			check_response response, [READ_DI_COMMAND, number], 3
 			pin_state = response[2]
-			raise ProtocolEx.new "Firmware-protocol error: received pin state invalid ('#{pin_state}')" unless pin_state == 0 || pin_state == 1
+			raise ProtocolEx.new "Firmware-protocol error: received invalid pin state ('#{pin_state}') for pin ##{number}." unless pin_state == 0 || pin_state == 1
 			return pin_state
 		
 		elsif type == :ai
 		
 			# figure out reference
-			reference = @@ai_references["default"]
-			reference = metadata["reference"] if metadata != nil && metadata.include?("reference")
+			reference = meta[:reference]
+			reference = "default" unless reference
+			reference = @@ai_references[reference]
 			raise ProtocolEx.new "MinlabProtocol: :ai reference can only be a Fixnum" if reference.class != Fixnum
 
 			response = send_command READ_AI_COMMAND, [number, reference]

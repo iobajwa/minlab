@@ -19,9 +19,9 @@ describe Pin do
 
 	it "when performing a read, should delegate work to the underlying protocol" do
 		expect($pin).to receive(:assert_read_access)
-		expect($dummy_protocol).to receive(:read_pin).with(23, :type).and_return("result")
+		expect($dummy_protocol).to receive(:read_pin).with(23, :type, :meta).and_return("result")
 		
-		$pin.read.should be == "result"
+		$pin.read(:meta).should be == "result"
 	end
 
 	it "when performing a write, should delegate work to the underlying protocol" do

@@ -57,14 +57,14 @@ class Board
 	def wire name, number, type, meta={}
 		meta = {} unless meta
 		meta = { meta => nil } if meta.class != Hash
-		raise "A pin by the name of '#{name}' has already been wired." if @pins.include? name
+		raise "A pin by the name of '#{name}' has already been wired ('#{@name}' board)." if @pins.include? name
 		pin = nil
 		case type
 			when :di then pin = DigitalInputPin.parse  name, number, meta
 			when :do then pin = DigitalOutputPin.parse name, number, meta
 			when :ai then pin = AnalogInputPin.parse   name, number, meta
 			when :ao then pin = AnalogOutputPin.parse  name, number, meta
-			else raise "'#{name}, ##{number}': invalid pin type ('#{type}'). Valid types are- [:di, :do, :ai, :ao]"
+			else raise "'#{name}, ##{number}': invalid pin type ('#{type}'). Valid types are [:di, :do, :ai, :ao]"
 		end
 
 		pin.board_protocol = @protocol
